@@ -310,6 +310,20 @@ void img_callback(const sensor_msgs::ImageConstPtr& msg) {
 		cv::imwrite("/home/brian/13close.png",compiled_mask);
 //############3
 
+//########################
+
+
+//Try to remove holes
+	cv::Mat compiled_mask_invert;
+	cv::bitwise_not(compiled_mask,compiled_mask_invert);
+//	cv::imwrite("/home/brian/70invert.png",compiled_mask_invert);
+	cv::floodFill(compiled_mask_invert, cv::Point(0,0), cv::Scalar(0), 0, cv::Scalar(), cv::Scalar(), cv::FLOODFILL_FIXED_RANGE);
+//	cv::imwrite("/home/brian/71invert.png",compiled_mask_invert);
+//	cv::imwrite("/home/brian/72invertReg.png",compiled_mask);
+	cv::bitwise_or(compiled_mask,compiled_mask_invert,compiled_mask);
+//	cv::imwrite("/home/brian/73invertBoth.png",compiled_mask);
+
+//#########3
 
 /*
 //Do morphologyEx combined to be faster.
