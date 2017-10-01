@@ -18,9 +18,30 @@ ros::Publisher pub;
 es.pdf
 	http://www.sciencedirect.com/science/article/pii/S0031320306002767
 
-	Be careful, a bad bootstrap will cause it to converge around non road.
+	Be careful, a bad bootstrap will cause it to converge around non road!
 */
 
+//##########################################
+// Bootstrap is the "first guess". This can be done by a previously made histogram or selection of values
+// Train is essentially making the histogram add to 1.
+// Predict is using the histograms this program created to decide which pixels are road
+
+//Constants to play with
+const float road_threshold_bootstrap = 0.09; //worsforAVCbag: 0.12;
+const float shadows_threshold_bootstrap = 0.1;//worksForAVCbag: 0.091;
+
+const float road_threshold = 2.3; //WORKSForAVCbag 2.7;
+const float shadows_threshold = 0.53; //WORKSFORAVCbag 2.1 or 1.9;
+
+
+
+
+//Comment out features you don't want
+#define DEBUG_BOOTSTRAP //get the bootstrap debug (for threshold tuning)
+//#define FLOOD_REMOVE_HOLES //fills holes in detected area. Good for large aread detecting (roads) but not small, seperated features (like cones)
+#define INVERT_IMAGE_OUPUT //inverts image. The color you want to be detected from your histogram will be white by the algorithm unless inveverted
+
+//###########################################
 
 
 //VAR Declaration
@@ -72,9 +93,9 @@ cv::Mat calculateHistogramMask(cv::Mat image, cv::Mat histogram, cv::Mat mask, i
 
 
 cv::Mat bootstrap(cv::Mat image_hue){
-	float threshold = 0.16;//TODO: Play with this number 0-1
+	float threshold = 0.16;//Play with this number 0-1
 
-  const int rectangle_x = 670; //TODO: set rectangle more in the middle? or find a better calibration point.
+  const int rectangle_x = 670; //These are magic numbers. If used, they should be played with.
 	const int rectangle_y = 760;
 	const int rectangle_width = 580;
 	const int rectangle_height = 300;
@@ -231,9 +252,14 @@ void img_callback(const sensor_msgs::ImageConstPtr& msg) {
 		cv::split(frame_hsv, frame_hsv_planes);
 
 		if(firstRun){
-			//Guess of road from stored histogram!
-			road_mask = bootstrapLoadFromStorage(frame_hsv_planes[0],0.12,"road_histogram_hue_normalized",0);//#TODO: check
-			shadows_mask = bootstrapLoadFromStorage(frame_hsv_planes[0],0.091,"shadows_histogram_hue_normalized",1);//#TODO: mess with threshold
+			//Guess of road from stored histogram
+			road_mask = bootstrapLoadFromStorage(frame_hsv_planes[0],road_threshold_bootstrap,"road_histogram_hue_normalized",0);
+			shadows_mask = bootstrapLoadFromStorage(frame_hsv_planes[0],shadows_threshold_bootstrap,"shadows_histogram_hue_normalized",1);
+			#ifdef DEBUG_BOOTSTRAP
+				cv::imwrite("/home/brian/bootstrap_road_00.png",road_mask);
+				cv::imwrite("/home/brian/bootstrap_shadows_00.png",shadows_mask);
+			#endif
+
 			trainOnlyOne(road_histogram_hue_normalized, road_mask);
 			trainOnlyOne(shadows_histogram_hue_normalized,shadows_mask);
 			firstRun = false;
@@ -259,8 +285,6 @@ void img_callback(const sensor_msgs::ImageConstPtr& msg) {
 		nonShadows_histogram_hue_normalized = (nonShadows_histogram_hue_normalized * 0.99 + nonShadows_histogram_hue * 0.01);// / 2; //%
 
 
-		float road_threshold = 2.7; //TODO: Play with this value
-		float shadows_threshold = 2.1; //1.9; //TODO: Play with this value
 		road_mask = predict(frame_hsv_planes[0], road_histogram_hue_normalized, nonRoad_histogram_hue_normalized, road_threshold);
 		shadows_mask = predict(frame_hsv_planes[0], shadows_histogram_hue_normalized, nonShadows_histogram_hue_normalized, shadows_threshold);
 		//#TODO:train-predict loop?
@@ -310,10 +334,9 @@ void img_callback(const sensor_msgs::ImageConstPtr& msg) {
 		cv::imwrite("/home/brian/13close.png",compiled_mask);
 //############3
 
-//########################
 
-
-//Try to remove holes
+#ifdef FLOOD_REMOVE_HOLES
+// Remove holes by flood fill method (@reference https://www.learnopencv.com/filling-holes-in-an-image-using-opencv-python-c/)
 	cv::Mat compiled_mask_invert;
 	cv::bitwise_not(compiled_mask,compiled_mask_invert);
 //	cv::imwrite("/home/brian/70invert.png",compiled_mask_invert);
@@ -322,8 +345,13 @@ void img_callback(const sensor_msgs::ImageConstPtr& msg) {
 //	cv::imwrite("/home/brian/72invertReg.png",compiled_mask);
 	cv::bitwise_or(compiled_mask,compiled_mask_invert,compiled_mask);
 //	cv::imwrite("/home/brian/73invertBoth.png",compiled_mask);
+#endif
 
-//#########3
+#ifdef INVERT_IMAGE_OUPUT
+	cv::bitwise_not(compiled_mask,compiled_mask);
+#endif
+
+
 
 /*
 //Do morphologyEx combined to be faster.

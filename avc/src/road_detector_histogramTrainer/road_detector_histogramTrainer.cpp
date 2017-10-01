@@ -7,6 +7,23 @@
 
 using namespace std;
 
+/*
+	This builds a histogram for the road_detector node.
+
+	Instructions for use:
+	1. Load up your favorite bag file or run directly on robot
+	2. Decide which rectangular box area you would like to train on and set the dimensions in the variables below
+	3. Run this node and gather a couple seconds of good data. Look at the rectangle from the output this node for the hist area
+	4. Stop the node
+	5. Go to where the node saved the histogram as a .yml
+	6. Rename the histogram to either road_ or shadows_ + histogram_hue_normalized
+	7. Open the .yml file and rename the histogram to the file name and save
+	8. Go run the road_detector node
+
+	IF YOU GET A SEGMENTATION ERROR (CORE DUMPED), THEN YOU FORGOT TO CHANGE THE NAME IN THE .yml FILE!
+*/
+
+
 ros::Publisher pub;
 
 //VAR Declaration
@@ -21,10 +38,10 @@ const int hist_bins_hue = 361; //0-360 +1 exclusive
 const int hist_bins_saturation = 101; //0-100 +1 exclusive
 
 //Histogram Calculation Rectangle
-const int rectangle_x = 670; //TODO: set rectangle more in the middle? or find a better calibration point.
-const int rectangle_y = 760;
-const int rectangle_width = 580;
-const int rectangle_height = 300;
+const int rectangle_x = 215;//forAVC2016bag 670; //TODO: set rectangle more in the middle? or find a better calibration point.
+const int rectangle_y = 350;//forAVC2016bag 760;
+const int rectangle_width = 250;//forAVC2016bag 580;
+const int rectangle_height = 100;//forAVC2016bag 300;
 const int rectangle_Area = rectangle_width * rectangle_height;
 
 
