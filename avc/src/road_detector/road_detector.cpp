@@ -27,7 +27,7 @@ es.pdf
 // Predict is using the histograms this program created to decide which pixels are road
 
 //Constants to play with
-const float road_threshold_bootstrap = 0.09; //worksforAVCbag: 0.12; 
+const float road_threshold_bootstrap = 0.09; //worksforAVCbag: 0.12;
 const float shadows_threshold_bootstrap = 0.1;//worksForAVCbag: 0.091;
 
 const float road_threshold = 2.3; //WORKSForAVCbag 2.7;
@@ -35,10 +35,10 @@ const float shadows_threshold = 0.53; //WORKSFORAVCbag 2.1 or 1.9;
 
 //This is here to make sure it isn't a magic string, but shouldn't need to be changed.
 const string road_histogram_to_load = "road_histogram_hue_normalized"; //Name of histogram and file (don't include file type)
-const string road_histogram_to_load = "shadows_histogram_hue_normalized"; //Name of histogram and file (don't include file type)
+const string shadows_histogram_to_load = "shadows_histogram_hue_normalized"; //Name of histogram and file (don't include file type)
 
-//0 = off; 1 = normal (good for most things); 2 = medium (similar to 1, but has diff advantages);
-#define MORPHOLOGY_MODE 1
+//0 = off; 1 = normal (good for most things); 2 = medium (similar to 1, try if 1 is close to working); 3 = light
+#define MORPHOLOGY_MODE 3
 
 //Comment out features you don't want
 #define DEBUG_BOOTSTRAP //get the bootstrap debug (for threshold tuning)
@@ -316,6 +316,27 @@ void morphologyMode2() {
 
 }
 
+void morphologyMode3() {
+	cv::bitwise_or(road_mask, shadows_mask, compiled_mask);
+
+	auto kernel0 = cv::getStructuringElement(cv::MORPH_RECT,cv::Size(4,4));
+	cv::morphologyEx(road_mask,road_mask,cv::MORPH_CLOSE,kernel0); //it is important to to blur this original too!
+	cv::morphologyEx(shadows_mask,shadows_mask,cv::MORPH_CLOSE,kernel0); //it is important to blur this original too!
+	cv::morphologyEx(compiled_mask,compiled_mask,cv::MORPH_CLOSE,kernel0);
+
+	auto kernel1 = cv::getStructuringElement(cv::MORPH_RECT,cv::Size(4,4));
+	cv::morphologyEx(road_mask,road_mask,cv::MORPH_OPEN,kernel1); //it is important to to blur this original too!
+	cv::morphologyEx(shadows_mask,shadows_mask,cv::MORPH_OPEN,kernel1); //it is important to blur this original too!
+	cv::morphologyEx(compiled_mask,compiled_mask,cv::MORPH_OPEN,kernel1);
+
+	auto kernel2 = cv::getStructuringElement(cv::MORPH_RECT,cv::Size(7,7));
+	//cv::morphologyEx(road_mask,road_mask,cv::MORPH_CLOSE,kernel0); //it is important to to blur this original too!
+	//cv::morphologyEx(shadows_mask,shadows_mask,cv::MORPH_CLOSE,kernel0); //it is important to blur this original too!
+	cv::morphologyEx(compiled_mask,compiled_mask,cv::MORPH_CLOSE,kernel2);
+
+
+}
+
 
 
 void img_callback(const sensor_msgs::ImageConstPtr& msg) {
@@ -370,10 +391,13 @@ void img_callback(const sensor_msgs::ImageConstPtr& msg) {
 		rectangle(shadows_mask,cv::Point(0,0),cv::Point(road_mask.cols,road_mask.rows / 3), cv::Scalar(0,0,0),CV_FILLED);
 
 		switch (MORPHOLOGY_MODE) {
-			case 0: break;
+			case 0:	cv::bitwise_or(road_mask, shadows_mask, compiled_mask);
+							break;
 			case 1: morphologyMode1();
 							break;
 			case 2: morphologyMode2();
+							break;
+			case 3: morphologyMode3();
 							break;
 		}
 
@@ -396,10 +420,10 @@ void img_callback(const sensor_msgs::ImageConstPtr& msg) {
 		->
 		calculate Histograms for road and non road;
 		train those histograms (make them each add to 1)
-		average noramalized histograms ?
+		average noramalized histograms
 		predict(create a new mask based on threshold compare of road and nonRoad)
-		(repeat at -> x times)
 		filter blur (something that checks if pixels around it are white, then makes it white or black based on that)
+		(repeat at -> x times) as each time the blur helps it converge properly
 		*/
 
     //publish image
