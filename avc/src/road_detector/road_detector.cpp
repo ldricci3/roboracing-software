@@ -5,8 +5,6 @@
 #include "opencv2/imgproc/imgproc.hpp"
 #include <opencv2/highgui/highgui.hpp>
 
-using namespace std;
-
 ros::Publisher pub;
 
 
@@ -26,23 +24,24 @@ es.pdf
 // Train is normalizing the histogram compared to the number of pixels the mask finds. Allows for some "learning" to happen.
 // Predict is using the histograms this program created to decide which pixels are road
 
-//Constants to play with
-const float road_threshold_bootstrap = 0.09; //worksforAVCbag: 0.12;
-const float shadows_threshold_bootstrap = 0.1;//worksForAVCbag: 0.091;
+//Constants to play with: USE THE LAUNCH FILE TO PLAY WITH THEM QUICKlY. These are some defaults.
+float road_threshold_bootstrap = 0.12; //worksForRR_2017-07-08-20-31-37: 0.09; //worksforAVCbag: 0.12;
+float shadows_threshold_bootstrap = 0.091; //worksForRR_2017-07-08-20-31-37: 0.1;//worksForAVCbag: 0.091;
 
-const float road_threshold = 2.3; //WORKSForAVCbag 2.7;
-const float shadows_threshold = 0.53; //WORKSFORAVCbag 2.1 or 1.9;
+float road_threshold = 2.7;//worksForRR_2017-07-08-20-31-37: 2.3; //WORKSForAVCbag 2.7;
+float shadows_threshold = 2.1;//worksForRR_2017-07-08-20-31-37: 0.53; //WORKSFORAVCbag 2.1 or 1.9;
 
-//This is here to make sure it isn't a magic string, but shouldn't need to be changed.
-const string road_histogram_to_load = "road_histogram_hue_normalized"; //Name of histogram and file (don't include file type)
-const string shadows_histogram_to_load = "shadows_histogram_hue_normalized"; //Name of histogram and file (don't include file type)
+//This is here to make sure it isn't a magic string, but only histogram_locatin should need to be changed.
+const std::string road_histogram_to_load = "road_histogram_hue_normalized"; //Name of histogram and file (don't include file type)
+const std::string shadows_histogram_to_load = "shadows_histogram_hue_normalized"; //Name of histogram and file (don't include file type)
+std::string histogram_location = "/home/brian/catkin_ws/";
 
 //0 = off; 1 = normal (good for most things); 2 = medium (similar to 1, try if 1 is close to working); 3 = light
-#define MORPHOLOGY_MODE 3
+int morphology_mode = 1;
 
 //Comment out features you don't want
-#define DEBUG_BOOTSTRAP //get the bootstrap debug (for threshold tuning)
-//#define FLOOD_REMOVE_HOLES //fills holes in detected area. Good for large aread detecting (roads) but not small, seperated features (like cones)
+#define DEBUG_BOOTSTRAP //get the bootstrap debug (for threshold tuning) --Outputs to histogram_location
+#define FLOOD_REMOVE_HOLES //fills holes in detected area. Good for large aread detecting (roads) but not small, seperated features (like cones)
 #define INVERT_IMAGE_OUPUT //inverts image. The color you want to be detected from your histogram will be white by the algorithm unless inveverted
 
 //###########################################
@@ -145,7 +144,7 @@ cv::Mat bootstrap(cv::Mat image_hue){
 }
 
 //##### #TODO DO NOT FORGET TO RUN road_detector_histogramTrainer.
-cv::Mat bootstrapLoadFromStorage(cv::Mat image_hue, float threshold, string fileName, int isShadows){
+cv::Mat bootstrapLoadFromStorage(cv::Mat image_hue, float threshold, std::string file_name, int isShadows){
 
 	cv::Mat mask(image_hue.rows, image_hue.cols, CV_8UC1); //mask. Same width/height of input image. Greyscale.
 	cv::Mat histogram_hue;
@@ -153,9 +152,9 @@ cv::Mat bootstrapLoadFromStorage(cv::Mat image_hue, float threshold, string file
 	//FILE LOADING HISTOGRAM
 	// load file
 	// per http://stackoverflow.com/questions/10277439/opencv-load-save-histogram-data
-	cv::FileStorage fs(fileName + ".yml", cv::FileStorage::READ);
-	if (!fs.isOpened()) {ROS_FATAL_STREAM("unable to open file storage!");}
-	fs[fileName] >> histogram_hue;
+	cv::FileStorage fs(histogram_location + file_name + ".yml", cv::FileStorage::READ);
+	if (!fs.isOpened()) {ROS_FATAL_STREAM("unable to open file storage! @ " + histogram_location + file_name + ".yml");}
+	fs[file_name] >> histogram_hue;
 	fs.release();
 
 	//Mask making
@@ -247,24 +246,24 @@ cv::Mat predict(cv::Mat img_hue, cv::Mat &hist_hue_road, cv::Mat &hist_hue_nonRo
 
 void morphologyMode1() {
 		//############## Do the morphologyEx seperately to allow the Algorithm to learn from more accurate masks. May or may not help.
-		cv::imwrite("/home/brian/50Road1.png",road_mask);
-		cv::imwrite("/home/brian/51Shadows1.png",shadows_mask);
+//		cv::imwrite("/home/brian/50Road1.png",road_mask);
+//		cv::imwrite("/home/brian/51Shadows1.png",shadows_mask);
 
 		auto kernel = cv::getStructuringElement(cv::MORPH_RECT,cv::Size(4,4));
 		cv::morphologyEx(shadows_mask,shadows_mask,cv::MORPH_CLOSE,kernel);
-		cv::imwrite("/home/brian/52Shadows2_op.png",shadows_mask);
+//		cv::imwrite("/home/brian/52Shadows2_op.png",shadows_mask);
 
 		cv::morphologyEx(road_mask,road_mask,cv::MORPH_CLOSE,kernel);
-		cv::imwrite("/home/brian/51Road_op.png",road_mask);
-		cv::imwrite("/home/brian/10before.png",road_mask);
+//		cv::imwrite("/home/brian/51Road_op.png",road_mask);
+//		cv::imwrite("/home/brian/10before.png",road_mask);
 
 		auto kernel1 = cv::getStructuringElement(cv::MORPH_RECT,cv::Size(4,4));
 		cv::morphologyEx(road_mask,road_mask,cv::MORPH_CLOSE,kernel1);
-		cv::imwrite("/home/brian/11close.png",road_mask);
+//		cv::imwrite("/home/brian/11close.png",road_mask);
 
 		auto kernel2 = cv::getStructuringElement(cv::MORPH_RECT,cv::Size(10,10));
 		cv::morphologyEx(road_mask,road_mask,cv::MORPH_OPEN,kernel2);
-		cv::imwrite("/home/brian/12open.png",road_mask);
+//		cv::imwrite("/home/brian/12open.png",road_mask);
 		//Clear out last random black noise. Warning: Loss of detail
 		auto kernel3 = cv::getStructuringElement(cv::MORPH_RECT,cv::Size(30,30)); //Larger num = no noise but loose exactness. Try 50.
 		cv::morphologyEx(road_mask,road_mask,cv::MORPH_CLOSE,kernel3);
@@ -283,36 +282,36 @@ void morphologyMode1() {
 		//Clear out last random black noise. Warning: Loss of detail
 		auto kernel4 = cv::getStructuringElement(cv::MORPH_RECT,cv::Size(50,50)); //Larger num = no noise but loose  detail
 		cv::morphologyEx(compiled_mask,compiled_mask,cv::MORPH_CLOSE,kernel4);
-		cv::imwrite("/home/brian/13close.png",compiled_mask);
+//		cv::imwrite("/home/brian/13close.png",compiled_mask);
 }
 
 void morphologyMode2() {
 		//Do morphologyEx combined to be faster.
-		cv::imwrite("/home/brian/50Road1.png",road_mask);
-		cv::imwrite("/home/brian/51Shadows1.png",shadows_mask);
+//		cv::imwrite("/home/brian/50Road1.png",road_mask);
+//		cv::imwrite("/home/brian/51Shadows1.png",shadows_mask);
 
 		auto kernel = cv::getStructuringElement(cv::MORPH_RECT,cv::Size(4,4));
 		cv::morphologyEx(shadows_mask,shadows_mask,cv::MORPH_CLOSE,kernel);
-		cv::imwrite("/home/brian/52Shadows2_op.png",shadows_mask);
+//		cv::imwrite("/home/brian/52Shadows2_op.png",shadows_mask);
 		cv::morphologyEx(road_mask,road_mask,cv::MORPH_CLOSE,kernel);
-		cv::imwrite("/home/brian/51Road_op.png",road_mask);
+//		cv::imwrite("/home/brian/51Road_op.png",road_mask);
 
 		cv::bitwise_or(road_mask, shadows_mask, compiled_mask);
 		//morphologyEx Closing operation. #TODO:Keep trying filtering below
 
 		//## may be better solution!! Works 8-28-17 just needs a large kernal the end to destroy last black spots
-		cv::imwrite("/home/brian/10before.png",compiled_mask);
+//		cv::imwrite("/home/brian/10before.png",compiled_mask);
 		auto kernel1 = cv::getStructuringElement(cv::MORPH_RECT,cv::Size(4,4));
 		cv::morphologyEx(compiled_mask,compiled_mask,cv::MORPH_CLOSE,kernel1);
-		cv::imwrite("/home/brian/11close.png",compiled_mask);
+//		cv::imwrite("/home/brian/11close.png",compiled_mask);
 		auto kernel2 = cv::getStructuringElement(cv::MORPH_RECT,cv::Size(10,10));
 		cv::morphologyEx(compiled_mask,compiled_mask,cv::MORPH_OPEN,kernel2);
-		cv::imwrite("/home/brian/12open.png",compiled_mask);
+//		cv::imwrite("/home/brian/12open.png",compiled_mask);
 
 		//Clear out last random black noise. Warning: Loss of detail
 		auto kernel3 = cv::getStructuringElement(cv::MORPH_RECT,cv::Size(30,30)); //Larger num = no noise but loose exactness. Try 50.
 		cv::morphologyEx(compiled_mask,compiled_mask,cv::MORPH_CLOSE,kernel3);
-		cv::imwrite("/home/brian/13close.png",compiled_mask);
+//		cv::imwrite("/home/brian/13close.png",compiled_mask);
 
 }
 
@@ -345,7 +344,7 @@ void img_callback(const sensor_msgs::ImageConstPtr& msg) {
 
 		cv::Mat frame_hsv;
 		cvtColor(frame, frame_hsv, cv::COLOR_BGR2HSV );
-		vector<cv::Mat> frame_hsv_planes;
+		std::vector<cv::Mat> frame_hsv_planes;
 		cv::split(frame_hsv, frame_hsv_planes);
 
 		if(firstRun){
@@ -353,8 +352,8 @@ void img_callback(const sensor_msgs::ImageConstPtr& msg) {
 			road_mask = bootstrapLoadFromStorage(frame_hsv_planes[0],road_threshold_bootstrap,road_histogram_to_load,0);
 			shadows_mask = bootstrapLoadFromStorage(frame_hsv_planes[0],shadows_threshold_bootstrap,shadows_histogram_to_load,1);
 			#ifdef DEBUG_BOOTSTRAP
-				cv::imwrite("/home/brian/bootstrap_road_00.png",road_mask);
-				cv::imwrite("/home/brian/bootstrap_shadows_00.png",shadows_mask);
+				cv::imwrite(histogram_location + "bootstrap_road_00.png",road_mask);
+				cv::imwrite(histogram_location + "bootstrap_shadows_00.png",shadows_mask);
 			#endif
 
 			trainOnlyOne(road_histogram_hue_normalized, road_mask);
@@ -390,7 +389,7 @@ void img_callback(const sensor_msgs::ImageConstPtr& msg) {
 		rectangle(road_mask,cv::Point(0,0),cv::Point(road_mask.cols,road_mask.rows / 3), cv::Scalar(0,0,0),CV_FILLED);
 		rectangle(shadows_mask,cv::Point(0,0),cv::Point(road_mask.cols,road_mask.rows / 3), cv::Scalar(0,0,0),CV_FILLED);
 
-		switch (MORPHOLOGY_MODE) {
+		switch (morphology_mode) {
 			case 0:	cv::bitwise_or(road_mask, shadows_mask, compiled_mask);
 							break;
 			case 1: morphologyMode1();
@@ -403,7 +402,7 @@ void img_callback(const sensor_msgs::ImageConstPtr& msg) {
 
 
 		#ifdef FLOOD_REMOVE_HOLES
-		// Remove holes by flood fill method (@reference https://www.learnopencv.com/filling-holes-in-an-image-using-opencv-python-c/)
+		// Remove holes by flood fill method (@note https://www.learnopencv.com/filling-holes-in-an-image-using-opencv-python-c/)
 			cv::Mat compiled_mask_invert;
 			cv::bitwise_not(compiled_mask,compiled_mask_invert);
 			cv::floodFill(compiled_mask_invert, cv::Point(0,0), cv::Scalar(0), 0, cv::Scalar(), cv::Scalar(), cv::FLOODFILL_FIXED_RANGE);
@@ -441,6 +440,17 @@ int main(int argc, char** argv) {
 	ros::init(argc, argv, "road_detector");
 
 	ros::NodeHandle nh;
+	ros::NodeHandle nhp("~");
+	nhp.param("road_threshold_bootstrap", road_threshold_bootstrap);//, 0.5f);//#Defaults are done at the top. This should be changed and below uncommented #TODO
+	nhp.param("shadows_threshold_bootstrap", shadows_threshold_bootstrap);//, 0.5f);
+	nhp.param("road_threshold", road_threshold);//, 2.0f);
+	nhp.param("shadows_threshold", shadows_threshold);//, 1.0f);
+	nhp.param("histogram_location", histogram_location);//, std::string("/home/"));
+	nhp.param("morphology_mode", morphology_mode);
+
+
+
+
   pub = nh.advertise<sensor_msgs::Image>("/road_detector", 1); //test publish of image
 	auto img_sub = nh.subscribe("/camera/image_rect", 1, img_callback);
 

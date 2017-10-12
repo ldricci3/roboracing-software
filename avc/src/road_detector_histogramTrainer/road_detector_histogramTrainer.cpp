@@ -103,7 +103,7 @@ void img_callback(const sensor_msgs::ImageConstPtr& msg) {
 
 		//store histogram
 		//per http://stackoverflow.com/questions/10277439/opencv-load-save-histogram-data
-		cv::FileStorage fs("histogram_hue_normalized.yml", cv::FileStorage::WRITE);
+		cv::FileStorage fs("/home/histogram_hue_normalized.yml", cv::FileStorage::WRITE);
 		if (!fs.isOpened()) {ROS_FATAL_STREAM("unable to open file storage!"); return;}
 		fs << "histogram_hue_normalized" << road_histogram_hue_normalized;
 		fs.release();

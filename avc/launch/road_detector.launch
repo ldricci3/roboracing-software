@@ -1,0 +1,11 @@
+<launch>
+  <node pkg="avc" type="road_detector" name="road_detector" output="screen" respawn="false">
+    <param name="road_threshold_bootstrap" type="double" value="0.12" />
+    <param name="shadows_threshold_bootstrap" type="double" value="0.091" />
+    <param name="road_threshold" type="double" value="2.7" />
+    <param name="shadows_threshold" type="double" value="2.1" /> -->
+    <param name="histogram_location" type="string" value="/home/brian/catkin_ws/" />
+    <param name="morphology_mode" type="int" value="1" />
+
+  </node>
+</launch>
