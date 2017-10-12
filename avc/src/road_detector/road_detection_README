@@ -1,0 +1,39 @@
+README for using RoboRacing road_detector node
+
+This road_detector is used to find objects based on a hue histogram using a smarter method than plain histogram back projection. It "learns" from the past frames somewhat in order to get better results. It is called a road detector, but can easily detect any colored object (even ones with very similar hues to surroundings).
+
+Some terms taken from the other work this node was based on, bootstrap, train, and predict
+Bootstrap is the "first guess". This can be done by a previously made histogram or selection of values. Needs to be right or else you will converge around the wrong hues.
+Train is normalizing the histogram compared to the number of pixels the mask finds. Allows for some "learning" to happen.
+Predict is using the histograms this program created to decide which pixels are road and makes the mask.
+
+
+To use:
+1. Run road_detector_histogramTrainer node 
+	Instructions for use:
+	A1. Load up your favorite bag file or run directly on robot
+	A2. Decide which rectangular box area you would like to train on and set the dimensions in the variables below
+	A3. Run this node and gather a couple seconds of good data. Look at the rectangle from the output this node for the hist area
+	A4. Stop the node
+	A5. Go to where the node saved the histogram as a .yml
+	A6. Rename the histogram to either road_ or shadows_ + histogram_hue_normalized
+	A7. Open the .yml file and rename the histogram to the file name and save
+
+2. Define DEBUG_BOOTSTRAP in road_detector file and compile
+2. Run road_detector node while having road+shadow within view for the first startup frame.
+3. look at the debug images:
+	If the bootstrap is completely wrong, redo step 1 with a better histogram
+	If the bootstrap is allowing too much or not enough, play with the thresholds (in launch file)
+4. With the bootstrap fixed, play with the (non-bootstrap) thresholds to get the desired output (in launch file)
+5. define the proper morphology mode (1 should work)
+6. (default on) define image inversion (to make white = obstacle)
+7. (default on) define flood remove holes (needed when detecting such a large road, not wanted when detecting small cones)
+ and flood remove holes.
+
+@note: THERE IS A (possible bug/unfortunate side effect) THAT REQUIRES road_detector node to be started with both road and shadows in view so the bootstrap is right! I'm working to get around that.
+
+@note: IF YOU GET A SEGMENTATION ERROR (CORE DUMPED), THEN YOU FORGOT TO CHANGE THE NAME IN THE .yml FILE OR THE NAME OF THE .yml!
+@note: shadows does not necessarily have to be shadows, if there is a differently colored area, that can be the "shadows" too. It should be easy enough to add another histogram of another area if needed...
+
+
+
