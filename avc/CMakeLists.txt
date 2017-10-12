@@ -51,8 +51,9 @@ include_directories(
   ${EIGEN_INCLUDE_DIRS}
 )
 
-add_subdirectory(src/mapper)
-add_subdirectory(src/tutorial)
-add_subdirectory(src/histogram)
 add_subdirectory(src/road_detector)
 add_subdirectory(src/road_detector_histogramTrainer)
+add_library(avc src/start_detector/start_detector.cpp src/finish_detector/finish_detector.cpp)
+target_link_libraries(avc ${catkin_LIBRARIES})
+
+add_subdirectory(src/obstacle_history)
