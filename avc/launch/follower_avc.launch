@@ -1,0 +1,12 @@
+<launch>
+    <node name="follower_avc" pkg="rr_common" type="follower" output="screen" >
+    <param name="MIN_X" value="-0.2"/>
+    <param name="MAX_X" value="0.2"/>
+    <param name="MIN_Y" value="0.1"/>
+    <param name="MAX_Y" value="0.1"/>
+    <param name="MAX_Z" value="1.0"/>
+    <param name="GOAL_Z" value="0.6"/>
+    <param name="Z_SCALE" value="1.0"/>
+    <param name="X_SCALE" value="5.0"/>
+    </node>
+</launch>
