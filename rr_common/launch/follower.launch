@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<launch>
+    <include file="$(find rr_platform)/launch/macaroni_platform.launch"/>
+    <!-- <include file="$(find rr_platform)/scan/TEMP_POINT_CLOUD.launch"> -->
+    <node name="follower" pkg="rr_common" type="follower" output="screen" >
+    <param name="MIN_X" value="-1.0"/>
+    <param name="MAX_X" value="1.0"/>
+    <param name="GOAL_Y" value="0.5"/>
+    <param name="MAX_Y" value="3.0"/>
+    <param name="MAX_Z" value="5.0"/>
+    <param name="GROUND_THRESHOLD" value="0.1"/>
+    <param name="INPUT_CLOUD_TOPIC" value="/current_obstacles"/>
+    <param name="FOLLOWER_SPEED" value="1.0"/>
+    </node>
+</launch>
