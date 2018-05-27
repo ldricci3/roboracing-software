@@ -1,10 +1,16 @@
 #!/usr/bin/env python
 
 import rospy
+from sensor_msgs.msg import Image
+from std_msgs.msg import Bool
+from cv_bridge import CvBridge
 import cv2
 import numpy as np
-import os, sys
-from glob import glob
+
+
+last_red = last_green = (0,0,0)
+latest_img_msg = None
+bridge = CvBridge()
 
 
 # rate a ROI circle by computing the proportion of the circle that is more green
@@ -32,10 +38,10 @@ def pair_score_circle(circle, channel_mask):
     return (rate_circle(circle, channel_mask), tuple(circle))
 
 def proc_channel(img_good_channel, img_bad_channel, circles, last_circle, debug_img, color):
-    circles = np.uint32(np.around(circles))[0,:]
+    circles = np.uint32(np.around(circles))[0,:3]
     mask = (img_good_channel > 150) * ((img_good_channel - 80) > img_bad_channel)
     mask = mask.astype(np.uint8) * 255
-    score, circle = max(pair_score_circle(p, mask) for p in circles)[:3]
+    score, circle = max(pair_score_circle(p, mask) for p in circles)
     if not is_similar_circle(circle, last_circle):
         score *= 0.3
 
@@ -45,51 +51,76 @@ def proc_channel(img_good_channel, img_bad_channel, circles, last_circle, debug_
 
     return score, circle, mask, debug_img
 
+def img_callback(img_msg):
+    global latest_img_msg
+    latest_img_msg = img_msg
+
+# (image) -> {"red", "green", None}
+def process_img(im):
+    global last_red, last_green
+
+    im_red = im[:,:,2].copy()
+    im_green = im[:,:,1].copy()
+    im_blue = im[:,:,0].copy()
+
+    im_gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
+    im_gray = cv2.medianBlur(im_gray, 7)
+
+    circles = cv2.HoughCircles(im_gray, cv2.HOUGH_GRADIENT, 2, 50,
+                        param1=70, param2=50, minRadius=8, maxRadius=75)
+
+    debug_img = np.stack([im_gray]*3, axis=-1)
+
+    if type(circles) != type(None):
+        red_score, red_circle, red_mask, debug_img = proc_channel(
+                im_red, im_green, circles.copy(), last_red, debug_img, (0,0,255))
+
+        green_score, green_circle, green_mask, debug_img = proc_channel(
+                im_green, im_red, circles.copy(), last_green, debug_img, (0,255,0))
+
+        last_red = red_circle
+        last_green = green_circle
+
+        cv2.imshow('red', red_mask)
+        cv2.imshow('green', green_mask)
+        cv2.imshow('detected circles', debug_img)
+        cv2.waitKey(1)
+
+        is_red = red_score > 0.8
+        is_green = green_score > 0.8
+
+        if not (is_red or is_green):
+            return None
+        else:
+            return 'red' if is_red else 'green'
+
+
 def main():
     rospy.init_node('stoplight_watcher_py')
 
-    assert len(sys.argv) > 1
-    path = sys.argv[1]
+    stoplight_topic = rospy.get_param('~stoplight_topic')
+    img_topic = rospy.get_param('~img_topic')
 
-    last_red = last_green = (0,0,0)
+    publisher = rospy.Publisher(stoplight_topic, Bool, queue_size=1)
+    rospy.Subscriber(img_topic, Image, img_callback)
 
-    for fname in sorted(glob(os.path.join(path, '*.jpg'))):
-        im = cv2.imread(fname)
-        im = cv2.resize(im, (800,450))
+    rate = rospy.Rate(10)
+    while not rospy.is_shutdown():
+        if type(latest_img_msg) != type(None) and publisher.get_num_connections() > 0:
+            img = bridge.imgmsg_to_cv2(latest_img_msg, desired_encoding='bgr8')
 
-        im_red = im[:,:,2].copy()
-        im_green = im[:,:,1].copy()
-        im_blue = im[:,:,0].copy()
+            scale_factor = 480. / img.shape[0]
+            if abs(scale_factor - 1.) > 0.1:
+                img = cv2.resize(img, None, fx=scale_factor, fy=scale_factor)
 
-        im_gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
-        im_gray = cv2.medianBlur(im_gray, 7)
+            res = process_img(img)
+            start_detected = (res == 'green')
 
-        circles = cv2.HoughCircles(im_gray, cv2.HOUGH_GRADIENT, 2, 50,
-                            param1=70, param2=50, minRadius=8, maxRadius=75)
+            msg = Bool()
+            msg.data = start_detected
+            publisher.publish(msg)
 
-        debug_img = np.stack([im_gray]*3, axis=-1)
-
-        if type(circles) != type(None):
-            red_score, red_circle, red_mask, debug_img = proc_channel(
-                im_red, im_green, circles.copy(), last_red, debug_img, (0,0,255))
-            # print "red_circle", red_circle, red_score
-
-            green_score, green_circle, green_mask, debug_img = proc_channel(
-                im_green, im_red, circles.copy(), last_green, debug_img, (0,255,0))
-            # print "green_circle", green_circle, green_score
-
-            last_red = red_circle
-            last_green = green_circle
-
-        print "red" if red_score >= green_score else "green"
-
-        cv2.imshow('detected circles', debug_img)
-        cv2.imshow('red', red_mask)
-        cv2.imshow('green', green_mask)
-
-        k = cv2.waitKey(40)
-        if k == ord('q'):
-            break
+        rate.sleep()
 
 if __name__ == '__main__':
     main()
