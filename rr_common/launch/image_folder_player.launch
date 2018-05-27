@@ -1,0 +1,11 @@
+<launch>
+    <arg name="folder"/>
+    <arg name="topic" default="/camera/image_raw"/>
+    <arg name="rate" default="30"/>
+
+    <node pkg="rr_common" type="image_folder_player.py" name="image_folder_player" output="screen">
+        <param name="image_folder_path" type="string" value="$(arg folder)"/>
+        <param name="publish_topic" type="string" value="$(arg topic)"/>
+        <param name="publish_rate" type="double" value="$(arg rate)"/>
+    </node>
+</launch>
