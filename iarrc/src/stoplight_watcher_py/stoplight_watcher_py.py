@@ -28,6 +28,20 @@ def rate_circle(xyr, channel_mask):
     except:
         return 0
 
+def rate_halo(xyr, channel_mask):
+    try:
+        x, y, r = xyr
+        r2 = r + 3
+        channel_mask_crop = channel_mask[int(y-r2):int(y+r2), int(x-r2):int(x+r2)]
+        circle_mask = np.zeros_like(channel_mask_crop)
+        r = int(r)
+        circle_mask = cv2.circle(circle_mask, (r2, r2), r+2, 255, 2)
+        rating = np.count_nonzero(np.bitwise_and(circle_mask, channel_mask_crop)) \
+                 / float(np.count_nonzero(circle_mask))
+        return rating
+    except:
+        return 0
+
 def is_similar_circle(xyr1, xyr2):
     x1, y1, r1 = xyr1
     x2, y2, r2 = xyr2
@@ -35,7 +49,7 @@ def is_similar_circle(xyr1, xyr2):
     return (min(r1, r2) > center_dist)
 
 def pair_score_circle(circle, channel_mask):
-    return (rate_circle(circle, channel_mask), tuple(circle))
+    return (rate_halo(circle, channel_mask), tuple(circle))
 
 def proc_channel(img_good_channel, img_bad_channel, circles, last_circle, debug_img, color):
     circles = np.uint32(np.around(circles))[0,:3]
