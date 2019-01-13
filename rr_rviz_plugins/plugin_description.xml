@@ -13,4 +13,11 @@
             Panel used for reseting the state to race start
         </description>
     </class>
+    <class name="rr_rviz_plugins/ColorPanel"
+           type="rr_rviz_plugins::ColorPanel"
+           base_class_type="rviz::Panel">
+        <description>
+            Panel used for actively tuning color matchers
+        </description>
+    </class>
 </library>
