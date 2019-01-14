@@ -1,0 +1,3 @@
+add_executable(hls_matcher hls_matcher.cpp)
+target_link_libraries(hls_matcher ${catkin_LIBRARIES})
+add_dependencies(hls_matcher rr_platform_generate_messages_cpp)
