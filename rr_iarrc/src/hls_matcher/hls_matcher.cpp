@@ -7,12 +7,12 @@
 
 ros::Publisher pub;
 
-int hsv_select = 0; //0 = hue, 1 = sat, 2 = value
+bool remove_sun;
 
-int threshold_min;
-int threshold_max;
-
-cv::Mat output;
+int threshold_lightness_min;
+int threshold_lightness_max;
+int threshold_hue_min;
+int threshold_hue_max;
 
 
 void img_callback(const sensor_msgs::ImageConstPtr& msg) {
@@ -26,21 +26,34 @@ void img_callback(const sensor_msgs::ImageConstPtr& msg) {
 	std::vector<cv::Mat> frame_hls_planes;
 	cv::split(frame_hls, frame_hls_planes);
 
+	cv::Mat output;
+
 	//blurring to assist in removing line from road mask...eh
-	//cv::GaussianBlur(frame_hsv_planes[2], frame_hsv_planes[2], cv::Size(9,9), 2.0);
+	//cv::GaussianBlur(frame_hls_planes[1], frame_hls_planes[1], cv::Size(9,9), 2.0);
 
-  //hls threshold
-  cv::inRange(frame_hls_planes[1], cv::Scalar(threshold_min), cv::Scalar(threshold_max), output);
-	auto kernel_small = cv::getStructuringElement(cv::MORPH_RECT,cv::Size(3,3));
-	cv::morphologyEx(output, output, cv::MORPH_OPEN,kernel_small);
+  //Line Detector: hls lightness threshold
+	cv::Mat thresh_lightness;
+  cv::inRange(frame_hls_planes[1], cv::Scalar(threshold_lightness_min), cv::Scalar(threshold_lightness_max), thresh_lightness);
 
-  /*
-  //threshold
-	cv::threshold(frame_hsv_planes[2], output, threshold, 255, cv::THRESH_BINARY);
+	if (remove_sun) {
+		//Anti-Sun Detector: get rid of red/yellow/orange "SUN" hues
+		cv::Mat thresh_hue;
+		cv::inRange(frame_hls_planes[0], cv::Scalar(threshold_hue_min), cv::Scalar(threshold_hue_max), thresh_hue);
+
+		//mix the line detector with the anti-sun detector: line AND NOT sun tint
+		cv::bitwise_not(thresh_hue, thresh_hue);
+		cv::bitwise_and(thresh_lightness, thresh_hue, output);
+	} else {
+		output = thresh_lightness;
+	}
+
+	//#TODO: Maybe do contours and then check if any of them are too round and ignore those;
+
+	//Morphology to connect lines and remove random noise #TODO: play with these numbers maybe
+	auto kernel_large = cv::getStructuringElement(cv::MORPH_RECT,cv::Size(21,21));
+	cv::morphologyEx(output, output, cv::MORPH_CLOSE, kernel_large);
 	auto kernel_small = cv::getStructuringElement(cv::MORPH_RECT,cv::Size(3,3));
-	cv::morphologyEx(output, output, cv::MORPH_OPEN,kernel_small);
-	//#TODO: will need some very small morphology openning to remove stray pixels, and proper body removal
-  */
+	cv::morphologyEx(output, output, cv::MORPH_OPEN, kernel_small);
 
 	//remove the body kinda
 	cv::rectangle(output,
@@ -53,7 +66,6 @@ void img_callback(const sensor_msgs::ImageConstPtr& msg) {
 			cv::Point(0,0),
 			cv::Point(output.cols,output.rows / 3 + 100),
 			cv::Scalar(0,0,0),CV_FILLED);
-
 
 
 	//publish mask image
@@ -71,9 +83,11 @@ int main(int argc, char** argv) {
 
 	ros::NodeHandle nh;
 	ros::NodeHandle nhp("~");
-	nhp.param("threshold_min", threshold_min, 10);
-  nhp.param("threshold_max", threshold_max, 100);
-	nhp.param("hsv_select", hsv_select, 0);
+	nhp.param("threshold_lightness_min", threshold_lightness_min, 100);
+  nhp.param("threshold_lightness_max", threshold_lightness_max, 250);
+	nhp.param("threshold_hue_min", threshold_hue_min, 0);
+	nhp.param("threshold_hue_max", threshold_hue_max, 80);
+	nhp.param("remove_sun", remove_sun, true);
 
 
   pub = nh.advertise<sensor_msgs::Image>("/hls_matcher", 1); //publish lines as binary image

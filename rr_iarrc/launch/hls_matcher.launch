@@ -1,8 +1,10 @@
 <launch>
   <node name="hls_matcher" pkg="rr_iarrc" type="hls_matcher" output="screen">
-	<param name="hls_select" type="int" value="0" />
-	<param name="threshold_min" type="int" value="220" />
-	<param name="threshold_max" type="int" value="280" />
+	<param name="remove_sun" type="boolean" value="true" />
+	<param name="threshold_lightness_min" type="int" value="200" />
+	<param name="threshold_lightness_max" type="int" value="280" />
+	<param name="threshold_hue_min" type="int" value="0" />
+	<param name="threshold_hue_max" type="int" value="80" />
 
   </node>
 </launch>
