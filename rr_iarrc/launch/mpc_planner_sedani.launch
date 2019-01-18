@@ -1,21 +1,11 @@
-<?xml version="1.0" encoding="UTF-8" ?>
 <launch>
-    <remap from="/plan/speed" to="/speed"/>
-    <remap from="/plan/steering" to="/steering"/>
-
-    <include file="$(find rr_platform)/launch/sedani.launch"/>
-
-    <include file="$(find avc)/launch/mapper.launch"/>
-
-
-    <arg name="n_path_segments" value="6"/>
-
+    <arg name="n_path_segments" value="4"/>
     <node pkg="rr_common" type="planner" name="planner" output="screen">
         <param name="planner_type" value="annealing"/>
 
         <param name="collision_dist_front" value="0.62"/>
         <param name="collision_dist_back" value="0.17"/>
-        <param name="collision_dist_side" value="0.23"/>
+        <param name="collision_dist_side" value="0.05"/>
 
         <param name="wheel_base" value="0.485"/>
         <param name="lateral_accel" value="0.5"/>
@@ -24,7 +14,7 @@
         <param name="steering_speed" value="1.2"/>
 
         <param name="distance_increment" value="0.1"/>
-        <param name="segment_sections" value="$(eval ' '.join(['10'] * n_path_segments))"/>
+        <param name="segment_sections" value="$(eval ' '.join(['12'] * n_path_segments))"/>
 
         <param name="n_path_segments" value="$(arg n_path_segments)"/>
         <param name="temperature_start" value="0.2"/>
@@ -38,7 +28,7 @@
         <param name="collision_penalty" value="50"/>
         <param name="acceptance_scale" value="0.003"/>
 
-        <param name="input_cloud_topic" value="/current_obstacles"/>
+        <param name="input_cloud_topic" value="/detection_image_transformed_cloud"/>
 
     </node>
 </launch>

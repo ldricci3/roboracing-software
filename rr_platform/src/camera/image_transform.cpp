@@ -6,7 +6,6 @@
 #include <rr_platform/camera_pose.h>
 #include <cmath>
 #include <sensor_msgs/JointState.h>
-#include <rr_avc/constants.hpp>
 #include <tf/transform_listener.h>
 #include <sensor_msgs/CameraInfo.h>
 #include <boost/algorithm/string.hpp>
@@ -15,8 +14,12 @@ using namespace std;
 using namespace cv;
 using namespace ros;
 
-double camera_fov_horizontal;
-double camera_fov_vertical;
+const double PX_PER_METER = 20.0;
+const double CAMERA_DIST_MAX = 7.0; //distance to look ahead of the car
+const double CAMERA_DIST_MIN = 1.0; //avoid the front bumper
+
+double camera_fov_horizontal = -1;
+double camera_fov_vertical = -1;
 double cam_mount_angle; //angle of camera from horizontal
 double cam_height; //camera height from ground in meters
 double chassis_height; //amount to subtract for calculated height for joint state
@@ -77,17 +80,26 @@ void fovCallback(const sensor_msgs::CameraInfoConstPtr& msg) {
     camera_fov_horizontal = 2 * atan2(imageSize.width, 2*fx);
     camera_fov_vertical = 2 * atan2(imageSize.height, 2*fy);
 }
-void loadCameraFOV() {
-    camera_fov_horizontal = camera_fov_vertical = -1;
-    NodeHandle nh_temp;
-    auto infoSub = nh_temp.subscribe("/camera/camera_info", 1, fovCallback);
+
+void loadCameraFOV(NodeHandle& nh) {
+    auto infoSub = nh.subscribe("/camera/camera_info", 1, fovCallback);
+
+    Time t_start = Time::now();
     while(camera_fov_horizontal <= 0 || camera_fov_vertical <= 0) {
+        if((Time::now() - t_start).toSec() > 10) {
+            ROS_INFO("[Image_Transform] Warning: setting camera FOV from camera_info timed out");
+
+            // FLIR Blackfly backup FOV info
+            camera_fov_horizontal = 1.6955;
+            camera_fov_vertical = 1.3758;
+            imageSize.height = 964;
+            imageSize.width = 1280;
+        }
+
         spinOnce();
         Duration(0.05).sleep();
     }
-    ROS_INFO("Using horizontal FOV %f and vertical FOV %f",
-             camera_fov_horizontal, camera_fov_vertical);
-    nh_temp.shutdown();
+    ROS_INFO("Using horizontal FOV %f and vertical FOV %f", camera_fov_horizontal, camera_fov_vertical);
 }
 
 /*
@@ -110,7 +122,7 @@ bool getCalibBoardCorners(const Mat &inimage, Size dims, Point2f * outPoints) {
     cvtColor(inimage, gray, CV_BGR2GRAY);
 
     //home in on the precise corners using edge lines in sourrounding +-11 pixel box
-    cornerSubPix(gray, corners, Size(11, 11), Size(-1, -1), 
+    cornerSubPix(gray, corners, Size(11, 11), Size(-1, -1),
                  TermCriteria(CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1));
 
     outPoints[0] = corners[0];
@@ -175,53 +187,54 @@ double pxFromDist_X(double dmin, double dmax) {
 // see https://www.desmos.com/calculator/pwjwlnnx77
 // see https://drive.google.com/file/d/0Bw7-7Y3CUDw1Z0ZqdmdRZ3dUTE0/view?usp=sharing
 double pxFromDist_Y(double dist) {
-    double foo = atan(cam_height/dist) - cam_mount_angle + camera_fov_vertical/2;
-    return imageSize.height * foo / (camera_fov_vertical);
+    double tmp = atan(cam_height/dist) - cam_mount_angle + camera_fov_vertical/2;
+    return imageSize.height * tmp / (camera_fov_vertical);
 }
 
 void setTransformFromGeometry() {
     //set width and height of the rectangle in front of the robot with 1cm = 1px
     // the actual output image will show more than this rectangle
-    int rectangle_w = sqrt(pow(constants::camera_distance_min,2) + pow(cam_height,2)) 
-                      * tan(camera_fov_horizontal/2) * constants::pixels_per_meter * 2;
-    int rectangle_h = (constants::camera_distance_max - constants::camera_distance_min) 
-                      * constants::pixels_per_meter;
+    float rectangle_w = static_cast<float>(sqrt(pow(CAMERA_DIST_MIN, 2) + pow(cam_height, 2))
+                                           * tan(camera_fov_horizontal/2) * PX_PER_METER * 2);
+    float rectangle_h = static_cast<float>((CAMERA_DIST_MAX - CAMERA_DIST_MIN)
+                                            * PX_PER_METER);
 
     //find coordinates for corners above rectangle in input image
-    double x_top_spread = pxFromDist_X(constants::camera_distance_min, constants::camera_distance_max);
-    double y_bottom = pxFromDist_Y(constants::camera_distance_min);
-    double y_top    = pxFromDist_Y(constants::camera_distance_max);
+    float x_top_spread = static_cast<float>(pxFromDist_X(CAMERA_DIST_MIN,
+                                                         CAMERA_DIST_MAX));
+    float y_bottom = static_cast<float>(pxFromDist_Y(CAMERA_DIST_MIN));
+    float y_top    = static_cast<float>(pxFromDist_Y(CAMERA_DIST_MAX));
 
     //set the ouput image size to include the whole transformed image,
     // not just the target rectangle
-    mapSize.width = rectangle_w * (imageSize.width/x_top_spread) / 2;
-    mapSize.height = rectangle_h;
+    mapSize.width = static_cast<int>(rectangle_w * (imageSize.width/x_top_spread) / 2);
+    mapSize.height = static_cast<int>(rectangle_h);
 
     Point2f src[4] = {
-        Point2f(imageSize.width/2 - x_top_spread, y_top), //top left
-        Point2f(imageSize.width/2 + x_top_spread, y_top), //top right
+        Point2f(imageSize.width/2.f - x_top_spread, y_top), //top left
+        Point2f(imageSize.width/2.f + x_top_spread, y_top), //top right
         Point2f(0, y_bottom),                             //bottom left
         Point2f(imageSize.width, y_bottom)                //bottom right
     };
 
     Point2f dst[4] = {
-        Point2f(mapSize.width/2 - rectangle_w/2, 0),              //top left
-        Point2f(mapSize.width/2 + rectangle_w/2, 0),              //top right
-        Point2f(mapSize.width/2 - rectangle_w/2, mapSize.height), //bottom left
-        Point2f(mapSize.width/2 + rectangle_w/2, mapSize.height)  //bottom right
+        Point2f(mapSize.width/2.f - rectangle_w/2.f, 0),              //top left
+        Point2f(mapSize.width/2.f + rectangle_w/2.f, 0),              //top right
+        Point2f(mapSize.width/2.f - rectangle_w/2.f, mapSize.height), //bottom left
+        Point2f(mapSize.width/2.f + rectangle_w/2.f, mapSize.height)  //bottom right
     };
 
     transform_matrix = getPerspectiveTransform(src, dst);
 }
 
-void TransformImage(const sensor_msgs::ImageConstPtr msg, string topic) {
+void TransformImage(const sensor_msgs::ImageConstPtr& msg, string& topic) {
     //if no one is listening or the transform is undefined, give up
     if(transform_pubs[topic].getNumSubscribers() == 0 || transform_matrix.empty()) {
         return;
     }
 
     cv_bridge::CvImagePtr cv_ptr;
-    cv_ptr = cv_bridge::toCvCopy(msg);
+    cv_ptr = cv_bridge::toCvCopy(msg, "mono8");
     const Mat &inimage = cv_ptr->image;
 
     Mat outimage;
@@ -278,7 +291,7 @@ int main(int argc, char **argv) {
     NodeHandle nh;
     NodeHandle pnh("~");
 
-    loadCameraFOV(); //spins ROS event loop for a bit
+    loadCameraFOV(nh); //spins ROS event loop for a bit
     loadCameraPoseFromTf();
     setTransformFromGeometry();
     ROS_INFO("Set transform. Used height %f and angle %f", cam_height, cam_mount_angle);
