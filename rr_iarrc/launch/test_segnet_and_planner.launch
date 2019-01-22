@@ -1,0 +1,5 @@
+<launch>
+    <include file="$(dirname)/line_detector_segnet.launch"/>
+    <include file="$(dirname)/lines_pcl_converter.launch"/>
+    <include file="$(dirname)/mpc_planner_sedani.launch"/>
+</launch>

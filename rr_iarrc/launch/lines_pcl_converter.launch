@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <launch>
     <node pkg="rr_platform" type="image_transform" name="image_transform" output="screen">
-        <param name="transform_topics" value="/detection_image"/>
+        <param name="transform_topics" value="/lines_detection_img"/>
     </node>
 
     <node pkg="rr_common" type="image_pcl_converter" name="image_pcl_converter" output="screen">
-        <param name="image_topics" value="/detection_image_transformed"/>
+        <param name="image_topics" value="/lines_detection_img_transformed"/>
         <param name="px_per_meter" value="20"/>
     </node>
 </launch>
