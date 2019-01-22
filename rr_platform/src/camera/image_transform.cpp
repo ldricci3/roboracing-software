@@ -22,13 +22,11 @@ double camera_fov_horizontal = -1;
 double camera_fov_vertical = -1;
 double cam_mount_angle; //angle of camera from horizontal
 double cam_height; //camera height from ground in meters
-double chassis_height; //amount to subtract for calculated height for joint state
 
 Size mapSize; //pixels = cm
 Size imageSize;
 Mat transform_matrix;
 
-Publisher camera_pose_pub;
 map<string, Publisher> transform_pubs;
 
 void loadCameraPoseFromTf() {
@@ -42,7 +40,7 @@ void loadCameraPoseFromTf() {
     tf::quaternionTFToMsg(qTFCamBase, qMsgCamBase);
     tf::quaternionTFToMsg(qTFBaseChassis, qMsgBaseChassis);
 
-    geometry_msgs::PoseStamped psSrcCam, psDstBase, psSrcBase, psDstChassis;
+    geometry_msgs::PoseStamped psSrcCam, psDstBase, psSrcBase;
     psSrcCam.header.frame_id = "camera";
     psSrcCam.pose.orientation = qMsgCamBase;
     psSrcBase.header.frame_id = "base_footprint";
@@ -54,9 +52,8 @@ void loadCameraPoseFromTf() {
             listener.waitForTransform("base_footprint", "camera", ros::Time(0), ros::Duration(5.0));
             listener.transformPose("base_footprint", psSrcCam, psDstBase);
             listener.waitForTransform("chassis", "base_footprint", ros::Time(0), ros::Duration(5.0));
-            listener.transformPose("chassis", psSrcBase, psDstChassis);
             success = true;
-        } catch(tf2::LookupException e) {
+        } catch(tf2::LookupException& e) {
             ROS_ERROR("tf LookupException: %s", e.what());
         }
     }
@@ -65,11 +62,9 @@ void loadCameraPoseFromTf() {
 
     double roll, pitch, yaw;
     tf::Matrix3x3(qTFCamBase).getRPY(roll, pitch, yaw);
-//    ROS_INFO("found rpy = %f %f %f", roll, pitch, yaw);
 
     cam_mount_angle = pitch;
     cam_height = psDstBase.pose.position.z;
-    chassis_height = psDstChassis.pose.position.z;
 }
 
 void fovCallback(const sensor_msgs::CameraInfoConstPtr& msg) {
@@ -102,70 +97,6 @@ void loadCameraFOV(NodeHandle& nh) {
     ROS_INFO("Using horizontal FOV %f and vertical FOV %f", camera_fov_horizontal, camera_fov_vertical);
 }
 
-/*
- * precondition: outPoints is array of length 4 and type Point2f
- * postcondition: outPoints contains pixel coords in topLeft, topRight, bottomLeft,
- *  bottomRight order.
- */
-bool getCalibBoardCorners(const Mat &inimage, Size dims, Point2f * outPoints) {
-    vector<Point2f> corners;
-    int prefs = CALIB_CB_ADAPTIVE_THRESH + CALIB_CB_NORMALIZE_IMAGE + CALIB_CB_FAST_CHECK;
-    bool patternfound = findChessboardCorners(inimage, dims, corners, prefs);
-
-    //ROS_INFO("Process corners");
-    if (!patternfound) {
-        ROS_WARN("Pattern not found!");
-        return false;
-    }
-
-    Mat gray;
-    cvtColor(inimage, gray, CV_BGR2GRAY);
-
-    //home in on the precise corners using edge lines in sourrounding +-11 pixel box
-    cornerSubPix(gray, corners, Size(11, 11), Size(-1, -1),
-                 TermCriteria(CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1));
-
-    outPoints[0] = corners[0];
-    outPoints[1] = corners[dims.width - 1];
-    outPoints[2] = corners[dims.width * (dims.height-1)];
-    outPoints[3] = corners[dims.width * dims.height - 1];
-
-    return true;
-}
-
-// let another (platform-specific) module update the tf system with the current info
-void updateJointState() {
-    rr_platform::camera_pose msg;
-    msg.height = cam_height - chassis_height;
-    msg.angle = cam_mount_angle;
-    camera_pose_pub.publish(msg);
-}
-
-//corners is topLeft, topRight, bottomLeft, bottomRight
-void setGeometry(Size_<double> boardMeters, Point2f * corners) {
-    Point2f topLeft = corners[0];
-    Point2f topRight = corners[1];
-    Point2f bottomLeft = corners[2];
-    Point2f bottomRight = corners[3];
-
-    // image angle: angle between center of image and bottom (closest) edge of board
-    double yBottom = double(bottomLeft.y + bottomRight.y) / 2;
-    double imageAngle = ((yBottom / imageSize.height) - 0.5) * camera_fov_horizontal;
-
-    // dist0: 3D distance from camera to front edge of board
-    double bottomAngleH = (bottomRight.x - bottomLeft.x) / imageSize.width * camera_fov_horizontal;
-    double dist0 = boardMeters.width / (2. * tan(bottomAngleH));
-
-    // phi1: camera view angle between bottom/front and top/back of board
-    double yTop = double(topLeft.y + topRight.y) / 2;
-    double phi1 = (yBottom - yTop) / imageSize.height * camera_fov_vertical;
-    // phi2: angle between ground plane, back edge of board, and camera
-    double phi2 = asin(dist0 / boardMeters.height * sin(phi1));
-    double bottomAngleV = (M_PI/2) - phi1 - phi2;
-    
-    cam_mount_angle = (M_PI/2) - bottomAngleV - imageAngle; //*****
-    cam_height = dist0 * sin(bottomAngleV); //*****
-}
 
 /*
  * Start with a horizontal line on the groud at dmin meters horizonally in front of the 
@@ -246,45 +177,6 @@ void TransformImage(const sensor_msgs::ImageConstPtr& msg, string& topic) {
     transform_pubs[topic].publish(outmsg);
 }
 
-/*
- * Tune the angle and height of the camera using a pattern board
- */
-bool CalibrateCallback(rr_platform::calibrate_image::Request &request, 
-                       rr_platform::calibrate_image::Response &response) 
-{
-    if(camera_fov_horizontal <= 0 || camera_fov_vertical <= 0) {
-        ROS_ERROR("Calling calibration callback without a FOV defined");
-        return false;
-    }
-
-    cv_bridge::CvImagePtr cv_ptr;
-    Mat outimage;
-    cv_ptr = cv_bridge::toCvCopy(request.image);
-    const Mat &inimage = cv_ptr->image;
-
-    //size in pointsPerRow, pointsPerColumn
-    Size chessboardVertexDims(request.chessboardCols-1, request.chessboardRows-1);
-    
-    Point2f corners[4];
-    bool foundBoard = getCalibBoardCorners(inimage, chessboardVertexDims, corners);
-
-    if(!foundBoard) return false; // failed to find corners
-
-    //Real world chessboard dimensions. width, height
-    double w = double(request.squareWidth) * double(request.chessboardCols);
-    double h = double(request.squareWidth) * double(request.chessboardRows);
-    Size_<double> chessboardMeters(w, h);
-
-    setGeometry(chessboardMeters, corners);
-
-    ROS_INFO_STREAM("found height " << cam_height);
-    ROS_INFO_STREAM("found angle " << cam_mount_angle);
-
-    updateJointState();
-
-    return true;
-}
-
 
 int main(int argc, char **argv) {
     init(argc, argv, "image_transform");
@@ -294,10 +186,7 @@ int main(int argc, char **argv) {
     loadCameraFOV(nh); //spins ROS event loop for a bit
     loadCameraPoseFromTf();
     setTransformFromGeometry();
-    ROS_INFO("Set transform. Used height %f and angle %f", cam_height, cam_mount_angle);
-
-    //publish camera info for a description module to update its model
-    camera_pose_pub = nh.advertise<rr_platform::camera_pose>("/camera_pose", 1);
+    ROS_INFO("Calculated perspective transform. Used height %f and angle %f", cam_height, cam_mount_angle);
 
     string topicsConcat;
     pnh.getParam("transform_topics", topicsConcat);
@@ -314,8 +203,6 @@ int main(int argc, char **argv) {
         ROS_INFO_STREAM("Creating new topic " << newTopic);
         transform_pubs[topic] = nh.advertise<sensor_msgs::Image>(newTopic, 1);
     }
-
-    ServiceServer calibrate_service = nh.advertiseService("/calibrate_image", CalibrateCallback);
 
     spin();
 
