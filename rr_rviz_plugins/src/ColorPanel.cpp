@@ -1,5 +1,6 @@
 #include <rr_rviz_plugins/ColorPanel.h>
 #include <QVBoxLayout>
+#include <QHBoxLayout>
 #include <pluginlib/class_list_macros.h>
 
 namespace rr_rviz_plugins {
@@ -15,9 +16,15 @@ ColorPanel::ColorPanel(QWidget *parent)
     //color_pub = nh.advertise<rr_platform::race_reset>("/reset_detected", 0); //#TODO
     //connect(reset_btn, SIGNAL (released()), this, SLOT (ColorCallback()));
 
+    QHBoxLayout *hbox_1 = new QHBoxLayout;
+    hbox_1->addWidget(color_slider_min);
+    hbox_1->addWidget(color_spinner_min);
+
+
     QVBoxLayout *layout = new QVBoxLayout;
-    layout->addWidget(color_slider_min);
-    layout->addWidget(color_spinner_min);
+    layout->addLayout(hbox_1);
+    //layout->addWidget(color_slider_min);
+    //layout->addWidget(color_spinner_min);
     setLayout(layout);
 }
 
