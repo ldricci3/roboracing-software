@@ -246,8 +246,8 @@ int main(int argc, char** argv) {
     debug_pub2 = nh.advertise<sensor_msgs::Image>("/canny_color_edges", 1); //test publish of image
     debug_pub3 = nh.advertise<sensor_msgs::Image>("/canny_white_found", 1); //test publish of image
     debug_pub4 = nh.advertise<sensor_msgs::Image>("/canny_frameCut", 1); //test publish of image
-    auto img_sub = nh.subscribe("camera/image_color_rect_flipped", 1, img_callback);   //Newer Videos
-//	auto img_sub = nh.subscribe("/camera/image_color_rect", 1, img_callback);               //Older Videos
+//    auto img_sub = nh.subscribe("camera/image_color_rect_flipped", 1, img_callback);   //Newer Videos
+	auto img_sub = nh.subscribe("/camera/image_color_rect", 1, img_callback);               //Older Videos
 
     ros::spin();
     return 0;
