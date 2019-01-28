@@ -28,20 +28,56 @@ cv::Mat findColorLine(cv::Mat, cv::Mat, std::string);
 cv::Mat cutSmallCurvedLines(cv::Mat, int, int, bool x = false, double y = 1.0);
 cv::Mat findMaximumAboveLimit(cv::Mat, int, int);
 cv::Mat ignoreEdge(cv::Mat);
+void img_callback(const sensor_msgs::ImageConstPtr& msg);
 
 int min_line_threshold, max_line_threshold;
 int blockSky_height, blockWheels_height, blockBumper_height;
 int yellow_low_H, yellow_high_H, yellow_low_S, yellow_low_V;
 int white_low_H, white_high_H, white_low_S, white_low_V;
 
+
+int blockSky_height_bar = 150, blockWheels_height_bar = 30, blockBumper_height_bar = 0;
+
+int ylow_H = 20, yhigh_H = 40, ylow_S = 20, ylow_V = 100, color_choice;
+int wlow_H = 90, whigh_H = 115, wlow_S = 0, wlow_V = 125 , prev_choice = 2;
+int low_H, high_H, low_S, low_V;
+int min_line_threshold_bar = 60;
+int max_line_threshold_bar = 0;
+const char* window_name = "Edge Map";
+cv::Mat frame, detected_edges, yellow_found, white_found, combined_edges;
+sensor_msgs::ImageConstPtr msg1;
+
+void CannyThreshold(int x, void*) {
+
+    if(x == 0) {
+        img_callback(msg1);
+    }
+
+    Mat a,b,c;
+    frame.copyTo(detected_edges, detected_edges);
+    cvtColor(yellow_found,yellow_found,COLOR_GRAY2BGR);
+    cvtColor(white_found,white_found,COLOR_GRAY2BGR);
+    cvtColor(combined_edges,combined_edges,COLOR_GRAY2BGR);
+
+    hconcat(detected_edges,yellow_found, a);
+    hconcat(a, white_found, b);
+    hconcat(b, combined_edges, c);
+
+    cv::resizeWindow(window_name, 1800, 900);
+    imshow(window_name, c);
+    waitKey(100);
+}
+
+
 void img_callback(const sensor_msgs::ImageConstPtr& msg) {
     //convert msg to mat
+    msg1 = msg;
     cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg, "bgr8");
-    cv::Mat frame = cv_ptr->image;
+    frame = cv_ptr->image;
 
 //    Canny
     cv::Mat frame_cut = cutEnvironment(frame);
-    cv::Mat frame_gray, blur_gray, detected_edges, bgr_detected_edges;
+    cv::Mat frame_gray, blur_gray, bgr_detected_edges;
     cv::cvtColor(frame_cut, frame_gray, cv::COLOR_BGR2GRAY );
     cv::blur(frame_gray, blur_gray, cv::Size(2,2));
     cv::Canny(blur_gray, detected_edges, min_line_threshold, max_line_threshold*3, 3);
@@ -50,10 +86,27 @@ void img_callback(const sensor_msgs::ImageConstPtr& msg) {
 
     frame_cut.copyTo(bgr_detected_edges, detected_edges);
 
-    cv::Mat hsv_frame, yellow_found, white_found, yellow_combine, white_combine, combined_edges;
+    cv::Mat hsv_frame, yellow_combine, white_combine;
     cv::cvtColor(frame_cut, hsv_frame, cv::COLOR_BGR2HSV);
-    cv::inRange(hsv_frame, cv::Scalar(yellow_low_S, yellow_low_S, yellow_low_V), cv::Scalar(yellow_high_H, 255, 255), yellow_found);
-    cv::inRange(hsv_frame, cv::Scalar(white_low_H, white_low_S, white_low_V), cv::Scalar(white_high_H, 255, 255), white_found);
+
+    if (color_choice == 0) {
+        if (prev_choice != color_choice) {
+            setTrackbarPos("Low H", window_name, ylow_H); setTrackbarPos("High H", window_name, yhigh_H);
+            setTrackbarPos("Low S", window_name, ylow_S); setTrackbarPos("Low V", window_name, ylow_V);
+            prev_choice = color_choice;
+        }
+        ylow_H = low_H; yhigh_H = high_H; ylow_S = low_S; ylow_V = low_V;
+    } else {
+        if (prev_choice != color_choice) {
+            setTrackbarPos("Low H", window_name, wlow_H); setTrackbarPos("High H", window_name, whigh_H);
+            setTrackbarPos("Low S", window_name, wlow_S); setTrackbarPos("Low V", window_name, wlow_V);
+            prev_choice = color_choice;
+        }
+        wlow_H = low_H; whigh_H = high_H; wlow_S = low_S; wlow_V = low_V;
+    }
+
+    cv::inRange(hsv_frame, cv::Scalar(ylow_S, ylow_S, ylow_V), cv::Scalar(yhigh_H, 255, 255), yellow_found);
+    cv::inRange(hsv_frame, cv::Scalar(wlow_H, wlow_S, wlow_V), cv::Scalar(whigh_H, 255, 255), white_found);
 
     cv::Mat yellow_edges = findColorLine(detected_edges.clone(), yellow_found, "yellow");
     cv::Mat white_edges = findColorLine(detected_edges.clone(), white_found, "white");
@@ -62,13 +115,9 @@ void img_callback(const sensor_msgs::ImageConstPtr& msg) {
     bitwise_or(yellow_found, white_found, color_found);
     bitwise_or(yellow_edges, white_edges, combined_edges);
 //    cv::erode(combined_edges, combined_edges, kernel(2,1));
-    cv::morphologyEx(combined_edges, combined_edges, cv::MORPH_CLOSE,kernel(3,3));
+    cv::morphologyEx(combined_edges, combined_edges, cv::MORPH_CLOSE,kernel(7,7));
 //    cv::erode(combined_edges, combined_edges, kernel(3,1));
-    Mat green(combined_edges.rows,combined_edges.cols,CV_8UC3,cv::Scalar::all(3));
-    Mat green_edges, weight;
-    green = cv::Scalar(0,255,0);
-    green.copyTo(green_edges, combined_edges);
-    addWeighted( frame, .7, green_edges, 1, 0.0, weight);
+
 
 //	publish Mask overlapped image
     sensor_msgs::Image outmsg;
@@ -99,10 +148,12 @@ void img_callback(const sensor_msgs::ImageConstPtr& msg) {
     debug_pub3.publish(outmsg_mask3);
 
     sensor_msgs::Image outmsg_mask4;
-    cv_ptr->image = weight;
+    cv_ptr->image = frame_cut;
     cv_ptr->encoding = "bgr8";
     cv_ptr->toImageMsg(outmsg_mask4);
     debug_pub4.publish(outmsg_mask4);
+
+    CannyThreshold(1,0);
 }
 
 cv::Mat kernel(int x, int y) {
@@ -245,6 +296,20 @@ int main(int argc, char** argv) {
     nhp.param("white_high_H", white_high_H, 115);
     nhp.param("white_low_S", white_low_S, 0);
     nhp.param("white_low_V", white_low_V, 100);
+
+    namedWindow( window_name, CV_WINDOW_NORMAL );
+    createTrackbar( "Min Threshold:", window_name, &min_line_threshold, 400);
+    createTrackbar( "Max Threshold:", window_name, &max_line_threshold, 100 );
+
+    createTrackbar( "BlockSky:", window_name, &blockSky_height, 200 );
+    createTrackbar( "BlockCar:", window_name, &blockWheels_height, 200 );
+//    createTrackbar( "BlockBumper:", window_name, &blockBumper_height, 200, CannyThreshold );
+
+    createTrackbar("Yellow | White", window_name, &color_choice, 1);
+    createTrackbar("Low H", window_name, &low_H, 180);
+    createTrackbar("High H", window_name, &high_H, 180);
+    createTrackbar("Low S", window_name, &low_S, 255);
+    createTrackbar("Low V", window_name, &low_V, 255);
 
     pub = nh.advertise<sensor_msgs::Image>("/canny_detected_edges", 1); //test publish of image
     debug_pub = nh.advertise<sensor_msgs::Image>("/canny_yellow_found", 1); //test publish of image

@@ -1,0 +1,20 @@
+<launch>
+    <node name="canny_editor" pkg="rr_iarrc" type="canny_editor" output="screen">
+        <param name="min_line_threshold" type="int" value="120" />
+        <param name="max_line_threshold" type="int" value="5" />
+
+        <param name="blockSky_height" type="int" value="135" />
+        <param name="blockWheels_height" type="int" value="40" />
+        <param name="blockBumper_height" type="int" value="-20" />
+
+        <param name="yellow_low_H" type="int" value="20" />
+        <param name="yellow_high_H" type="int" value="40" />
+        <param name="yellow_low_S" type="int" value="20" />
+        <param name="yellow_low_V" type="int" value="100" />
+
+        <param name="white_low_H" type="int" value="90" />
+        <param name="white_high_H" type="int" value="115" />
+        <param name="white_low_S" type="int" value="0" />
+        <param name="white_low_V" type="int" value="125" />
+    </node>
+</launch>
