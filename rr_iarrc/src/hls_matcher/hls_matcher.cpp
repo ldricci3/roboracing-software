@@ -8,6 +8,7 @@
 ros::Publisher pub;
 
 bool remove_sun;
+string image_topic;
 
 int threshold_lightness_min;
 int threshold_lightness_max;
@@ -88,10 +89,11 @@ int main(int argc, char** argv) {
 	nhp.param("threshold_hue_min", threshold_hue_min, 0);
 	nhp.param("threshold_hue_max", threshold_hue_max, 80);
 	nhp.param("remove_sun", remove_sun, true);
+	nhp.param("image_topic", image_topic, "/camera/image_color_rect");
 
 
   pub = nh.advertise<sensor_msgs::Image>("/hls_matcher", 1); //publish lines as binary image
-	auto img_sub = nh.subscribe("/camera/image_color_rect_flipped", 1, img_callback);
+	auto img_sub = nh.subscribe(image_topic, 1, img_callback);
 
 	ros::spin();
 	return 0;

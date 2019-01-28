@@ -5,6 +5,7 @@
 	<param name="threshold_lightness_max" type="int" value="280" />
 	<param name="threshold_hue_min" type="int" value="0" />
 	<param name="threshold_hue_max" type="int" value="80" />
+  <param name="image_topic" type="string" value="/camera/image_color_rect" />
 
   </node>
 </launch>
