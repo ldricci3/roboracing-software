@@ -5,6 +5,7 @@
 #include <rviz/panel.h>
 #include <QSlider>
 #include <QSpinBox>
+#include <rr_platform/color.h>
 
 /*
  * All of our panels need to be under the rr_rviz_plugins namespace.
@@ -19,14 +20,14 @@ public:
     int hue_max;
 
 protected:
-    QSlider *color_slider_min;
-    QSpinBox *color_spinner_min;
-    QSlider *color_slider_max;
-    QSpinBox *color_spinner_max;
+    QSlider *hue_slider_min;
+    QSpinBox *hue_spinner_min;
+    QSlider *hue_slider_max;
+    QSpinBox *hue_spinner_max;
     ros::NodeHandle nh;
     ros::Publisher color_pub;
+    void publishColor();
 
-    void publish();
 
 private slots:
     void colorCallback();

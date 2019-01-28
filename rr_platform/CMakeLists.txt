@@ -38,6 +38,7 @@ add_message_files(
     camera_pose.msg
     chassis_state.msg
     axes.msg
+    color.msg
 )
 
 ## Generate services in the 'srv' folder
