@@ -18,6 +18,7 @@ ColorPanel::ColorPanel(QWidget *parent)
     //Hue stuff
     hue_label = new QLabel("H:");
     hue_slider_min = new QSlider(Qt::Horizontal, 0);
+    hue_slider_min->setRange(0, 360);
     hue_spinner_min = new QSpinBox();
     hue_spinner_min->setRange(0, 360);
     hue_spinner_min->setSingleStep(1);
@@ -27,6 +28,7 @@ ColorPanel::ColorPanel(QWidget *parent)
 
 
     hue_slider_max = new QSlider(Qt::Horizontal, 0);
+    hue_slider_max->setRange(0, 360);
     hue_spinner_max = new QSpinBox();
     hue_spinner_max->setRange(0,360);
     hue_spinner_max->setSingleStep(1);
@@ -46,6 +48,7 @@ ColorPanel::ColorPanel(QWidget *parent)
     //Lightness stuff
     lightness_label = new QLabel("L:");
     lightness_slider_min = new QSlider(Qt::Horizontal, 0);
+    lightness_slider_min->setRange(0, 300);
     lightness_spinner_min = new QSpinBox();
     lightness_spinner_min->setRange(0, 300);
     lightness_spinner_min->setSingleStep(1);
@@ -55,6 +58,7 @@ ColorPanel::ColorPanel(QWidget *parent)
 
 
     lightness_slider_max = new QSlider(Qt::Horizontal, 0);
+    lightness_slider_max->setRange(0, 300);
     lightness_spinner_max = new QSpinBox();
     lightness_spinner_max->setRange(0,300);
     lightness_spinner_max->setSingleStep(1);

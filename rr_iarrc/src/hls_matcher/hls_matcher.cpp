@@ -4,11 +4,14 @@
 #include <sensor_msgs/Image.h>
 #include "opencv2/imgproc/imgproc.hpp"
 #include <opencv2/highgui/highgui.hpp>
+#include "rr_platform/color.h"
 
 ros::Publisher pub;
 
 bool remove_sun;
-string image_topic;
+
+std::string image_topic;
+std::string color_tuner_topic;
 
 int threshold_lightness_min;
 int threshold_lightness_max;
@@ -78,6 +81,13 @@ void img_callback(const sensor_msgs::ImageConstPtr& msg) {
   pub.publish(outmsg);
 }
 
+void color_tuner_callback(const rr_platform::color::ConstPtr &msg) {
+	threshold_hue_min = msg->hue_min;
+	threshold_hue_max = msg->hue_max;
+	threshold_lightness_min = msg->lightness_min;
+	threshold_lightness_max = msg->lightness_max;
+}
+
 
 int main(int argc, char** argv) {
 	ros::init(argc, argv, "hls_matcher");
@@ -89,11 +99,13 @@ int main(int argc, char** argv) {
 	nhp.param("threshold_hue_min", threshold_hue_min, 0);
 	nhp.param("threshold_hue_max", threshold_hue_max, 80);
 	nhp.param("remove_sun", remove_sun, true);
-	nhp.param("image_topic", image_topic, "/camera/image_color_rect");
+	nhp.param("image_topic", image_topic, std::string("/camera/image_color_rect"));
+	nhp.param("color_tuner_topic", color_tuner_topic, std::string("/hls_tuner"));
 
 
   pub = nh.advertise<sensor_msgs::Image>("/hls_matcher", 1); //publish lines as binary image
 	auto img_sub = nh.subscribe(image_topic, 1, img_callback);
+	auto color_tuner_sub = nh.subscribe(color_tuner_topic, 1, color_tuner_callback);
 
 	ros::spin();
 	return 0;
