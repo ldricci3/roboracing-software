@@ -65,4 +65,5 @@ add_subdirectory(src/qualify)
 add_subdirectory(src/ol_reliable)
 add_subdirectory(src/hls_matcher)
 add_subdirectory(src/hsv_tuner)
+add_subdirectory(src/Canny_Detector)
 
