@@ -1,21 +1,21 @@
 <launch>
     <node name="canny_line_detector" pkg="rr_iarrc" type="canny_line_detector" output="screen">
-        <param name="min_line_threshold" type="int" value="110" />
-        <param name="max_line_threshold" type="int" value="5" />
+        <param name="min_line_threshold" type="int" value="400" />
+        <param name="max_line_threshold" type="int" value="100" />
 
-        <param name="blockSky_height" type="int" value="130" />
-        <param name="blockWheels_height" type="int" value="40" />
+        <param name="blockSky_height" type="int" value="200" />
+        <param name="blockWheels_height" type="int" value="200" />
         <param name="blockBumper_height" type="int" value="-20" />
 
         <param name="yellow_low_H" type="int" value="20" />
         <param name="yellow_high_H" type="int" value="40" />
-        <param name="yellow_low_S" type="int" value="20" />
+        <param name="yellow_low_S" type="int" value="255" />
         <param name="yellow_low_V" type="int" value="90" />
 
         <param name="white_low_H" type="int" value="90" />
         <param name="white_high_H" type="int" value="115" />
-        <param name="white_low_S" type="int" value="0" />
-        <param name="white_low_V" type="int" value="130" />
+        <param name="white_low_S" type="int" value="20" />
+        <param name="white_low_V" type="int" value="100" />
     </node>
 
     <!--<param name="robot_description" command="cat $(find rr_description)/urdf/macaroni.urdf"/>-->

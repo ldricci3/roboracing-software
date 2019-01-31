@@ -76,7 +76,7 @@ namespace rr_iarrc {
         dilation_kernel_white = getStructuringElement(MORPH_ELLIPSE, Size(5, 5));
 
         img_sub = it.subscribe("/camera/image_color_rect", 1, &color_detector::ImageCB, this);
-        img_pub = it.advertise("/lines_detection_img", 1);
+        img_pub = it.advertise("/lines_detection_img_hsv", 1);
 
         ROS_INFO("Color Detector ready!");
         ros::spin();        

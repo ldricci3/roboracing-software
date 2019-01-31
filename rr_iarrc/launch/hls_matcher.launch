@@ -1,11 +1,11 @@
 <launch>
   <node name="hls_matcher" pkg="rr_iarrc" type="hls_matcher" output="screen">
 	<param name="remove_sun" type="boolean" value="true" />
-	<param name="threshold_lightness_min" type="int" value="200" />
-	<param name="threshold_lightness_max" type="int" value="280" />
+	<param name="threshold_lightness_min" type="int" value="210" />
+	<param name="threshold_lightness_max" type="int" value="300" />
 	<param name="threshold_hue_min" type="int" value="0" />
-	<param name="threshold_hue_max" type="int" value="80" />
-  <param name="image_topic" type="string" value="/camera/image_color_rect_flipped" />
+	<param name="threshold_hue_max" type="int" value="40" />
+  <param name="image_topic" type="string" value="/camera/image_color_rect" />
   <param name="color_tuner_topic" type="string" value="/hls_tuner" />
 
   </node>

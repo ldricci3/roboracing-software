@@ -1,0 +1,21 @@
+<launch>
+    <!-- Canny method -->
+    <include file="$(dirname)/canny_line_detector.launch"/>
+
+    <!-- HSV method -->
+    <include file="$(dirname)/color_detector_standalone.launch"/>
+    <include file="$(dirname)/hsv_tuner.launch"/>
+
+    <!-- HLS method -->
+    <include file="$(dirname)/hls_matcher.launch"/>
+
+    <!-- neural network method -->
+    <include file="$(dirname)/line_detector_segnet.launch"/>
+
+    <!-- visualization -->
+    <node pkg="rqt_image_view" type="rqt_image_view" name="image1"/>
+    <node pkg="rqt_image_view" type="rqt_image_view" name="image2"/>
+    <node pkg="rqt_image_view" type="rqt_image_view" name="image3"/>
+    <node pkg="rqt_image_view" type="rqt_image_view" name="image4"/>
+    <node pkg="rqt_image_view" type="rqt_image_view" name="image5"/>
+</launch>

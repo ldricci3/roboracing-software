@@ -53,7 +53,7 @@ void img_callback(const sensor_msgs::ImageConstPtr& msg) {
     cv::Mat hsv_frame, yellow_found, white_found, yellow_combine, white_combine, combined_edges;
     cv::cvtColor(frame_cut, hsv_frame, cv::COLOR_BGR2HSV);
     cv::inRange(hsv_frame, cv::Scalar(yellow_low_S, yellow_low_S, yellow_low_V), cv::Scalar(yellow_high_H, 255, 255), yellow_found);
-    cv::inRange(hsv_frame, cv::Scalar(white_low_H, white_low_S, white_low_V), cv::Scalar(white_high_H, 255, 255), white_found);
+    cv::inRange(hsv_frame, cv::Scalar(0, 0, 184), cv::Scalar(255, 31, 255), white_found);
 
     cv::Mat yellow_edges = findColorLine(detected_edges.clone(), yellow_found, "yellow");
     cv::Mat white_edges = findColorLine(detected_edges.clone(), white_found, "white");
@@ -252,8 +252,8 @@ int main(int argc, char** argv) {
     debug_pub3 = nh.advertise<sensor_msgs::Image>("/canny_white_found", 1); //test publish of image
     debug_pub4 = nh.advertise<sensor_msgs::Image>("/canny_frameCut", 1); //test publish of image
     pub = nh.advertise<sensor_msgs::Image>("/canny_detected_edges", 1); //test publish of image
-    auto img_sub = nh.subscribe("camera/image_color_rect_flipped", 1, img_callback);   //Newer Videos
-//	auto img_sub = nh.subscribe("/camera/image_color_rect", 1, img_callback);               //Older Videos
+//    auto img_sub = nh.subscribe("camera/image_color_rect_flipped", 1, img_callback);   //Newer Videos
+	  auto img_sub = nh.subscribe("/camera/image_color_rect", 1, img_callback);               //Older Videos
 
     ros::spin();
     return 0;
