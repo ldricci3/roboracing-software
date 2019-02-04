@@ -79,6 +79,12 @@ def main():
         # pub_img = np.zeros_like(output_img)
         # cv2.drawContours(pub_img, contours, -1, (255,), 1)
 
+        n_labels, labels_img = cv2.connectedComponents(output_img, 8, cv2.CV_32S)
+        for i in range(n_labels):
+            component_size = np.count_nonzero(labels_img == i)
+            if component_size < 1000:
+                output_img[labels_img == i] = 0
+
         out_msg = cv_bridge.cv2_to_imgmsg(output_img, encoding="mono8")
         detect_pub.publish(out_msg)
 
