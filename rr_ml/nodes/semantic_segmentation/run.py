@@ -49,7 +49,8 @@ def main():
             continue
 
         try:
-            cam_img = cv_bridge.imgmsg_to_cv2(last_msg).copy()  # CvBridge makes img read-only without copy
+            # CvBridge makes img read-only without copy
+            cam_img = cv_bridge.imgmsg_to_cv2(last_msg, desired_encoding="bgr8").copy()
         except CvBridgeError as e:
             print e
             continue
@@ -70,20 +71,16 @@ def main():
         output_img = cv2.resize(output_img, (cam_width, cropped_height))  # back to original half dimensions
         output_img = unet_helper.uncrop(output_img)
 
-        # keypoints = blob_detector.detect(output_img)
-        # pub_img = np.zeros_like(output_img)
-        # cv2.drawKeypoints(output_img, keypoints, pub_img, color=255, flags=cv2.DRAW_MATCHES_FLAGS_DEFAULT)
-        # print keypoints
-
-        # image, contours, hierarchy = cv2.findContours(output_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        # pub_img = np.zeros_like(output_img)
-        # cv2.drawContours(pub_img, contours, -1, (255,), 1)
-
         n_labels, labels_img = cv2.connectedComponents(output_img, 8, cv2.CV_32S)
         for i in range(n_labels):
             component_size = np.count_nonzero(labels_img == i)
-            if component_size < 1000:
+            if component_size < 750:
                 output_img[labels_img == i] = 0
+
+        # draw lines on sides to limit path planner to FOV
+        # fov_bound_ymax = int(0.75 * output_img.shape[0])
+        # output_img[fov_bound_ymax:, :15] = 255
+        # output_img[fov_bound_ymax:, -15:] = 255
 
         out_msg = cv_bridge.cv2_to_imgmsg(output_img, encoding="mono8")
         detect_pub.publish(out_msg)

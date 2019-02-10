@@ -60,8 +60,6 @@ void transformedImageCB(const sensor_msgs::ImageConstPtr& msg, const string& top
         }
     }
 
-    ROS_INFO("num points = %d", static_cast<int>(cloud->size()));
-
     pcl::PCLPointCloud2 cloud_pc2;
     pcl::toPCLPointCloud2(*cloud, cloud_pc2);
     sensor_msgs::PointCloud2 cloud_msg;
