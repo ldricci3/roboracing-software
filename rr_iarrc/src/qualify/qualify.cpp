@@ -73,7 +73,7 @@ void imuCallback(const rr_platform::axesConstPtr& msg) {
 }
 
 void chassisCB(const rr_platform::chassis_stateConstPtr& msg) {
-    go = msg->mux_automatic;
+    go = msg->mux_autonomous;
 }
 
 void publishSpeed(const float &desiredSpeed) {

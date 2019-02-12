@@ -58,6 +58,7 @@ include_directories(
   ${EIGEN_INCLUDE_DIRS}
 )
 
+
 add_subdirectory(src/color_detector)
 add_subdirectory(src/stoplight_watcher)
 add_subdirectory(src/finish_line_watcher)
@@ -66,4 +67,5 @@ add_subdirectory(src/ol_reliable)
 add_subdirectory(src/hls_matcher)
 add_subdirectory(src/hsv_tuner)
 add_subdirectory(src/Canny_Detector)
+add_subdirectory(src/laplacian_line_detection)
 

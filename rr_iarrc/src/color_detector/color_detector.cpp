@@ -1,6 +1,9 @@
+#include <ros/package.h>
 #include "color_detector.h"
 #include <pluginlib/class_list_macros.h>
 #include <rr_iarrc/hsv_tuned.h>
+#include <fstream>
+#include <ctime>
 
 using namespace std;
 using namespace ros;
@@ -8,13 +11,14 @@ using namespace cv;
 
 namespace rr_iarrc {
 
-    double white_h_low = 255; 
-    double white_s_low = 255; 
-    double white_v_low = 255; 
-    double white_h_high = 255;    
-    double white_s_high = 255;
-    double white_v_high = 255;
-
+    double white_h_low; 
+    double white_s_low; 
+    double white_v_low; 
+    double white_h_high;    
+    double white_s_high;
+    double white_v_high;
+    std::string package_path = ros::package::getPath("rr_iarrc");    
+    std::string load_file_path;
 
     void color_detector::ImageCB(const sensor_msgs::ImageConstPtr &msg) {
 
@@ -61,24 +65,67 @@ namespace rr_iarrc {
         white_v_high = msg->white_v_high;
 
         ROS_INFO("Set HSV limits");
+    }    
+
+    void loadValues(){
+        string line;
+        int value; 
+        ifstream myfile (load_file_path);
+        
+        if (myfile.is_open()){
+            ROS_INFO("Loading HSV values.");
+            getline(myfile,line);
+            value = stoi(line);
+            white_h_low = value;
+
+            getline(myfile,line);
+            value = stoi(line);
+            white_s_low = value;
+
+            getline(myfile,line);
+            value = stoi(line);
+            white_v_low = value;
+
+            getline(myfile,line);
+            value = stoi(line);
+            white_h_high = value;
+
+            getline(myfile,line);
+            value = stoi(line);
+            white_s_high = value;
+
+            getline(myfile,line);
+            value = stoi(line);
+            white_v_high = value;
+
+            myfile.close();
+        }
+        else{
+            ROS_INFO("Unable to load HSV values.");
+        }
     }
 
     void color_detector::onInit() {
         NodeHandle nh = getNodeHandle();
         NodeHandle pnh = getPrivateNodeHandle();
+        ros::NodeHandle nhp("~");
         image_transport::ImageTransport it(nh);
+
+        std::string default_load_file_path = package_path + "/saved_hsv/example.txt" ;
+        nhp.param(std::string("load_file"), load_file_path ,default_load_file_path);
+        loadValues();
 
         ros::Subscriber hsv_tuned_sub = nh.subscribe("/hsv_tuned", 1, hsvTunedCallback);
 
-        mask = Rect(0, 482, 1280, 482); // bottom half of the image; x, y, w, h
+        mask = Rect(0, 482, 1280, 482); // x, y, w, h
 
         erosion_kernel_white = getStructuringElement(MORPH_ELLIPSE, Size(5, 5));
         dilation_kernel_white = getStructuringElement(MORPH_ELLIPSE, Size(5, 5));
 
         img_sub = it.subscribe("/camera/image_color_rect", 1, &color_detector::ImageCB, this);
-        img_pub = it.advertise("/lines_detection_img_hsv", 1);
+        img_pub = it.advertise("/lines_detection_img", 1);
 
-        ROS_INFO("Color Detector ready!");
+        ROS_INFO("Color  ready!");
         ros::spin();        
     }
 }
