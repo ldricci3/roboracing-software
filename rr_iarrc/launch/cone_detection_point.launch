@@ -1,0 +1,12 @@
+<launch>
+    <node name="cone_detection_point" pkg="rr_iarrc" type="cone_detection_point" output="screen">
+
+        <!--The larger the height the lower it will be on the screen-->
+        <param name="blockSky_height" type="int" value="200" />
+        <param name="blockWheels_height" type="int" value="200" />
+        <param name="blockBumper_height" type="int" value="200" />
+
+        <param name="subscription_node" type="string" value="/camera/image_color_rect"/>
+    </node>
+
+</launch>
