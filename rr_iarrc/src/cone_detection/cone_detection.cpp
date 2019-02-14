@@ -78,7 +78,7 @@ int main(int argc, char** argv) {
 
     nhp.param("subscription_node", subscription_node, std::string("/camera/image_color_rect"));
 
-    pub = nh.advertise<sensor_msgs::Image>("/lines_detection_img", 1); //test publish of image
+    pub = nh.advertise<sensor_msgs::Image>("/cone_detection_img", 1); //test publish of image
     pub1 = nh.advertise<sensor_msgs::Image>("/cone_Bottom_Overlay", 1);
     pub2 = nh.advertise<sensor_msgs::Image>("/cone_orange_found", 1);
     auto img_real = nh.subscribe(subscription_node, 1, img_callback);
