@@ -1,41 +1,46 @@
+from __future__ import print_function
+
 import numpy as np
-import pandas as pd
 import cv2
-import os
-import glob
-import matplotlib.pyplot as plt
-import pickle
-import math
-from sklearn.metrics import r2_score
 from sklearn.metrics import mean_squared_error
-import imutils
 import rospy
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 import time
 
 
-class contourObject:
-
+class ContourObject:
 	def __init__(self, contour, extLeft, extRight, midpoint, extTop, extBottom):
 		self.contour = contour
 		self.extLeft = extLeft
 		self.extRight = extRight
 		self.midpoint = midpoint
 		self.extTop = extTop
-		self.extBottom = extBottom 
+		self.extBottom = extBottom
+
+
+debug_publisher = None
+
+
+def distance(position_tuple1, position_tuple2):
+	dx0 = position_tuple1[0] - position_tuple2[0]
+	dx1 = position_tuple1[1] - position_tuple2[1]
+	return (dx0 * dx0 + dx1 * dx1) ** 0.5
+
 
 def callback(data):
 	bridge = CvBridge()
 	try:
 		im = bridge.imgmsg_to_cv2(data)
 	except CvBridgeError as e:
-		print e
+		print(e)
 		return None
 
-	# im = imgray;
+	# convert to 3-channel image
+	im_debug = cv2.
+
 	t0 = time.time()
-	scale_percent = 100 # percent of original size
+	scale_percent = 100  # percent of original size
 	width = int(im.shape[1] * scale_percent / 100)
 	height = int(im.shape[0] * scale_percent / 100)
 	dim = (width, height)
@@ -64,7 +69,6 @@ def callback(data):
 	# cv2.imshow('output',im)
 	# cv2.waitKey(0)
 
-	x = 0;
 	noElementInList2 = True
 
 	cntObjArr = []
@@ -86,7 +90,7 @@ def callback(data):
 		# cv2.circle(im, (xVal, yVal), 7, (255, 255, 255), -1)
 		# cv2.circle(im, (currExtLeft[0], currExtLeft[1]), 7, (0, 255, 255), -1)
 		# cv2.circle(im, (currExtRight[0], currExtRight[1]), 7, (255, 255, 0), -1)
-		cntObjArr.append(contourObject(cnt, currExtLeft, currExtRight, [xVal, yVal], extTop, extBottom))
+		cntObjArr.append(ContourObject(cnt, currExtLeft, currExtRight, [xVal, yVal], extTop, extBottom))
 
 
 	array1 = []
@@ -171,11 +175,11 @@ def callback(data):
 				indexOfLargest = -1
 				for obj in cntObjArr:
 					for cntObj in array1:
-						distListArr1 = [((cntObj.midpoint[0] - obj.midpoint[0]) ** 2 + (cntObj.midpoint[1] - obj.midpoint[1]) ** 2) ** 0.5 , 
-						((cntObj.extRight[0] - obj.extLeft[0]) ** 2 + (cntObj.extRight[1] - obj.extLeft[1]) ** 2) ** 0.5, 
-						((cntObj.extLeft[0] - obj.extRight[0]) ** 2 + (cntObj.extLeft[1] - obj.extRight[1]) ** 2) ** 0.5,
-						((cntObj.extTop[0] - obj.extBottom[0]) ** 2 + (cntObj.extTop[1] - obj.extBottom[1]) ** 2) ** 0.5,
-						((cntObj.extBottom[0] - obj.extTop[0]) ** 2 + (cntObj.extBottom[1] - obj.extTop[1]) ** 2) ** 0.5]
+						distListArr1 = [distance(cntObj.midpoint, obj.midpoint),
+										distance(cntObj.extRight, obj.extRight),
+										distance(cntObj.extLeft, obj.extLeft),
+										distance(cntObj.extTop, obj.extTop),
+										distance(cntObj.extBottom, obj.extBottom)]
 						# print(distListArr1)
 						lowestDist = min([lowestDist, min(distListArr1)])
 					if lowestDist < threshold:
@@ -201,20 +205,20 @@ def callback(data):
 				lowestDist1 = float("inf")
 				obj = cntObjArr[0]
 				for cntObj in array1:
-					distListArr1 = [((cntObj.midpoint[0] - obj.midpoint[0]) ** 2 + (cntObj.midpoint[1] - obj.midpoint[1]) ** 2) ** 0.5 , 
-						((cntObj.extRight[0] - obj.extLeft[0]) ** 2 + (cntObj.extRight[1] - obj.extLeft[1]) ** 2) ** 0.5, 
-						((cntObj.extLeft[0] - obj.extRight[0]) ** 2 + (cntObj.extLeft[1] - obj.extRight[1]) ** 2) ** 0.5,
-						((cntObj.extTop[0] - obj.extBottom[0]) ** 2 + (cntObj.extTop[1] - obj.extBottom[1]) ** 2) ** 0.5,
-						((cntObj.extBottom[0] - obj.extTop[0]) ** 2 + (cntObj.extBottom[1] - obj.extTop[1]) ** 2) ** 0.5]
+					distListArr1 = [distance(cntObj.midpoint, obj.midpoint),
+									distance(cntObj.extRight, obj.extRight),
+									distance(cntObj.extLeft, obj.extLeft),
+									distance(cntObj.extTop, obj.extTop),
+									distance(cntObj.extBottom, obj.extBottom)]
 					lowestDist1 = min([lowestDist1, min(distListArr1)])
 
 				lowestDist2 = float("inf")
 				for cntObj in array2:
-					distListArr2 = [((cntObj.midpoint[0] - obj.midpoint[0]) ** 2 + (cntObj.midpoint[1] - obj.midpoint[1]) ** 2) ** 0.5 , 
-						((cntObj.extRight[0] - obj.extLeft[0]) ** 2 + (cntObj.extRight[1] - obj.extLeft[1]) ** 2) ** 0.5, 
-						((cntObj.extLeft[0] - obj.extRight[0]) ** 2 + (cntObj.extLeft[1] - obj.extRight[1]) ** 2) ** 0.5,
-						((cntObj.extTop[0] - obj.extBottom[0]) ** 2 + (cntObj.extTop[1] - obj.extBottom[1]) ** 2) ** 0.5,
-						((cntObj.extBottom[0] - obj.extTop[0]) ** 2 + (cntObj.extBottom[1] - obj.extTop[1]) ** 2) ** 0.5]
+					distListArr2 = [distance(cntObj.midpoint, obj.midpoint),
+									distance(cntObj.extRight, obj.extRight),
+									distance(cntObj.extLeft, obj.extLeft),
+									distance(cntObj.extTop, obj.extTop),
+									distance(cntObj.extBottom, obj.extBottom)]
 					lowestDist2 = min([lowestDist2, min(distListArr2)])
 				
 				if lowestDist1 > lowestDist2:
@@ -334,17 +338,13 @@ def callback(data):
 		# print(l_funcx_ypred)
 		# print(mean_squared_error(array1y, l_funcx_ypred))
 		# print(mean_squared_error(array1x, l_funcy_xpred))
-		# l_points = np.array(l_funcx_points, dtype=np.int32)
-		# cv2.polylines(im, [l_points], 0, (255,0,0))
-		# l_points = np.array(l_funcy_points, dtype=np.int32)
-		# cv2.polylines(im, [l_points], 0, (0,255,255))
 
 		if mean_squared_error(array1y, l_funcx_ypred) < mean_squared_error(array1x, l_funcy_xpred):
 			l_points = np.array(l_funcx_points, dtype=np.int32)
-			# cv2.polylines(im, [l_points], 0, (255,255,255))
+			cv2.polylines(im_debug, [l_points], 0, (255,0,0))
 		else:
 			l_points = np.array(l_funcy_points, dtype=np.int32)
-			# cv2.polylines(im, [l_points], 0, (255,255,255))
+			cv2.polylines(im_debug, [l_points], 0, (255,0,0))
 
 
 	if len(array2x) > 0:
@@ -379,30 +379,34 @@ def callback(data):
 			# x2 = r[0] * i + r[1]
 			r_funcy_xpred.append(x2)
 
-		# r_points = np.array(r_funcx_points, dtype=np.int32)
-		# cv2.polylines(im, [r_points], 0, (0,0,255))
-		# r_points = np.array(r_funcy_points, dtype=np.int32)
-		# cv2.polylines(im, [r_points], 0, (0,0,255))
-
 		if mean_squared_error(array2y, r_funcx_ypred) < mean_squared_error(array2x, r_funcy_xpred):
 			r_points = np.array(r_funcx_points, dtype=np.int32)
-			# cv2.polylines(im, [r_points], 0, (255,255,255))
+			cv2.polylines(im_debug, [r_points], 0, (0,0,255))
 		else:
 			r_points = np.array(r_funcy_points, dtype=np.int32)
-			# cv2.polylines(im, [r_points], 0, (255,255,255))
+			cv2.polylines(im_debug, [r_points], 0, (0,0,255))
 	
 	t1 = time.time()
 	print("time", t1 - t0)
 	print("-----------------------------------------------")
-	cv2.imshow("", im)
-	cv2.waitKey(1);
+
+	msg = bridge.cv2_to_imgmsg(im)
+	debug_publisher.publish(msg)
+
+	# cv2.imshow("", im)
+	# cv2.waitKey(1)
+
 
 def listener():
-	rospy.init_node('listener', anonymous=True)
+	global debug_publisher
 
-	rospy.Subscriber("/lines_detection_img_transformed", Image, callback)
+	rospy.init_node("lane_detector")
+
+	rospy.Subscriber("/lines_detection_img_transformed", Image, callback, buff_size=10**8)
+	debug_publisher = rospy.Publisher("~debug_image", Image)
 
 	rospy.spin()
+
 
 if __name__ == '__main__':
 	listener()
