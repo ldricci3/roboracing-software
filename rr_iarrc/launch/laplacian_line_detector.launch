@@ -8,7 +8,7 @@
         <!--The larger the height the lower it will be on the screen-->
         <param name="blockSky_height" type="int" value="200" />
         <param name="blockWheels_height" type="int" value="200" />
-        <param name="blockBumper_height" type="int" value="200" />
+        <param name="blockBumper_height" type="int" value="10" />
 
         <param name="subscription_node" type="string" value="/camera/image_color_rect"/>
 
@@ -18,7 +18,7 @@
     <node pkg="rr_platform" type="image_transform" name="image_transform" output="screen">
         <param name="transform_topics" value="/lines_detection_img"/>
         <param name="px_per_meter" value="50"/>
-        <param name="map_dist_max" value="4.0"/>
+        <param name="map_dist_max" value="1.5"/>
         <param name="map_dist_min" value="0.0"/>
 
         <param name="fallback_fov_horizontal" value="1.6955"/>

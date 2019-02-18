@@ -20,6 +20,8 @@ class ContourObject:
 
 
 debug_publisher = None
+left_color = (255, 0, 0)
+right_color = (0, 0, 255)
 
 
 def distance(position_tuple1, position_tuple2):
@@ -36,9 +38,6 @@ def callback(data):
 		print(e)
 		return None
 
-	# convert to 3-channel image
-	im_debug = cv2.
-
 	t0 = time.time()
 	scale_percent = 100  # percent of original size
 	width = int(im.shape[1] * scale_percent / 100)
@@ -47,10 +46,12 @@ def callback(data):
 	# resize image
 
 	im = cv2.resize(im, dim, interpolation = cv2.INTER_AREA)
-	im = im[int(height*0.30):height, 0:width]
 	# plt.imshow(im)
 	# plt.show()
 	# imgray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
+
+	# make a 3-channel image for drawing debug info
+	im_debug = np.stack([im] * 3, axis=-1)
 
 	# kernel = np.ones((5,5), np.uint8)
 	# img_dilation = cv2.dilate(imgray, kernel, iterations=4)
@@ -254,7 +255,7 @@ def callback(data):
 	# THIS WORKS
 	# print("-----------------------------------------------")
 	for cntObj in array1:
-		cv2.drawContours(im, [cntObj.contour],0,(255,255,255),2)
+		cv2.drawContours(im, [cntObj.contour],0,left_color,2)
 		# print(cnt.size)
 		for pointA in cntObj.contour:
 			array1x.append(pointA[0][0])
@@ -262,19 +263,13 @@ def callback(data):
 			# print(cnt)
 			# array1.append([cnt])
 	for cntObj in array2:
-		cv2.drawContours(im, [cntObj.contour],0,(255,255,255),2)
+		cv2.drawContours(im, [cntObj.contour],0,right_color,2)
 		for pointA in cntObj.contour:
 			array2x.append(pointA[0][0])
 			array2y.append(pointA[0][1])
 			# print(cnt)
 			# array1.append([cnt])
 
-
-
-
-	# cv2.drawContours(im, [contours[6]],0,(255,0,255),2)
-	# cv2.imshow("", im)
-	# cv2.waitKey(0);
 
 	# print(len(array1x))
 	# print(array1y)
@@ -341,10 +336,10 @@ def callback(data):
 
 		if mean_squared_error(array1y, l_funcx_ypred) < mean_squared_error(array1x, l_funcy_xpred):
 			l_points = np.array(l_funcx_points, dtype=np.int32)
-			cv2.polylines(im_debug, [l_points], 0, (255,0,0))
+			cv2.polylines(im_debug, [l_points], 0, left_color)
 		else:
 			l_points = np.array(l_funcy_points, dtype=np.int32)
-			cv2.polylines(im_debug, [l_points], 0, (255,0,0))
+			cv2.polylines(im_debug, [l_points], 0, left_color)
 
 
 	if len(array2x) > 0:
@@ -381,16 +376,16 @@ def callback(data):
 
 		if mean_squared_error(array2y, r_funcx_ypred) < mean_squared_error(array2x, r_funcy_xpred):
 			r_points = np.array(r_funcx_points, dtype=np.int32)
-			cv2.polylines(im_debug, [r_points], 0, (0,0,255))
+			cv2.polylines(im_debug, [r_points], 0, right_color)
 		else:
 			r_points = np.array(r_funcy_points, dtype=np.int32)
-			cv2.polylines(im_debug, [r_points], 0, (0,0,255))
+			cv2.polylines(im_debug, [r_points], 0, right_color)
 	
 	t1 = time.time()
 	print("time", t1 - t0)
 	print("-----------------------------------------------")
 
-	msg = bridge.cv2_to_imgmsg(im)
+	msg = bridge.cv2_to_imgmsg(im_debug, encoding="bgr8")
 	debug_publisher.publish(msg)
 
 	# cv2.imshow("", im)
@@ -403,7 +398,7 @@ def listener():
 	rospy.init_node("lane_detector")
 
 	rospy.Subscriber("/lines_detection_img_transformed", Image, callback, buff_size=10**8)
-	debug_publisher = rospy.Publisher("~debug_image", Image)
+	debug_publisher = rospy.Publisher("~debug_image", Image, queue_size=1)
 
 	rospy.spin()
 
