@@ -8,15 +8,25 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/opencv.hpp>
+#include <sensor_msgs/PointCloud2.h>
+#include <pcl_conversions/pcl_conversions.h>
+#include <boost/asio.hpp>
+#include <boost/algorithm/string.hpp>
+#include <boost/math/constants/constants.hpp>
+#include <algorithm>
+#include <pcl_ros/point_cloud.h>
 #include <iostream>
 #include <stdlib.h>
 #include <stdio.h>
+#include <sensor_msgs/CameraInfo.h>
 
 using namespace cv;
 using namespace std;
+using namespace ros;
 
 cv_bridge::CvImagePtr cv_ptr;
 ros::Publisher pub, pub1, pub2;
+typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
 cv::Mat kernel(int, int);
 void cutEnvironment(cv::Mat);
@@ -25,14 +35,25 @@ cv::Mat  getCenter(cv::Mat, double);
 cv::Mat  cutBodies(cv::Mat, Mat);
 cv::Mat  doWatershed(Mat, cv::Mat, Mat);
 cv::Mat  drawAndCalc(cv::Mat, Mat);
+void drawCircle(pcl::PointCloud<pcl::PointXYZ> &cloud, pcl::PointXYZ point, double radius, int numPoints);
+void fovCallback(const sensor_msgs::CameraInfoConstPtr& msg);
+void loadCameraFOV(NodeHandle& nh);
 
 int blockSky_height, blockWheels_height, blockBumper_height;
 int low_H, high_H, low_S, low_V;
 int canny_cut_min_threshold;
 double percent_max_distance_transform;
 
-double fy = 111; //586.508911;
+double fy = 286.508911; //586.508911;
 double real_height = .45; //cm
+
+double camera_fov_horizontal;  // radians
+Size imageSize;
+bool fov_callback_called;
+double angle_constant;
+
+vector<pcl::PointXYZ> cone_points;
+
 
 void img_callback(const sensor_msgs::ImageConstPtr& msg) {
     cv_ptr = cv_bridge::toCvCopy(msg, "bgr8");
@@ -55,8 +76,19 @@ void img_callback(const sensor_msgs::ImageConstPtr& msg) {
 //	publish Images
     publishMessage(pub, frame, "bgr8");
     publishMessage(pub1, sure_bodies, "mono8");
-}
 
+    pcl::PointCloud<pcl::PointXYZ> cone_cloud;
+    for (int i = 0; i < cone_points.size(); i++) {
+        cerr << cone_points[i] << endl;
+        drawCircle(cone_cloud, cone_points[i], .1, 20);
+    }
+
+    sensor_msgs::PointCloud2 outmsg;
+    pcl::toROSMsg(cone_cloud, outmsg);
+    outmsg.header.frame_id = "base_footprint";
+    pub2.publish(outmsg);
+
+}
 
 int main(int argc, char** argv) {
     ros::init(argc, argv, "coneDetection");
@@ -78,14 +110,19 @@ int main(int argc, char** argv) {
 
     nhp.param("subscription_node", subscription_node, std::string("/camera/image_color_rect"));
 
+    loadCameraFOV(nh);
+
     pub = nh.advertise<sensor_msgs::Image>("/overlay_cones_point", 1); //test publish of image
-    pub1 = nh.advertise<sensor_msgs::Image>("/cone_point_body_debug", 1);
-    pub2 = nh.advertise<std_msgs::Float64MultiArray>("/cone_point_position_data", 1);
+    pub1 = nh.advertise<sensor_msgs::Image>("/cone_point_body_found", 1);
+    pub2 = nh.advertise<sensor_msgs::PointCloud2>("/cone_point_cloud", 1); //test publish of image
     auto img_real = nh.subscribe(subscription_node, 1, img_callback);
 
     ros::spin();
     return 0;
 }
+
+
+
 
 
 cv::Mat cutBodies(cv::Mat frame_cut, cv::Mat orange_found) {
@@ -106,7 +143,6 @@ cv::Mat cutBodies(cv::Mat frame_cut, cv::Mat orange_found) {
 
     return detected_bodies;
 }
-
 
 cv::Mat getCenter(cv::Mat img, double thres_value) {
     Mat dist_transform, thres, dist_mask, mask;
@@ -134,8 +170,6 @@ cv::Mat getCenter(cv::Mat img, double thres_value) {
 
     return sure_front;
 }
-
-
 
 cv::Mat doWatershed(cv::Mat frame,cv::Mat orange_found, cv::Mat detected_bodies) {
     Mat sure_back, dist_transform, unknown, markers;
@@ -171,12 +205,13 @@ cv::Mat drawAndCalc(cv::Mat frame, cv::Mat sure_bodies) {
     findContours(sure_bodies, contours, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE);
     vector<Rect> rect( contours.size() );
     std_msgs::Float64MultiArray list;
+    cone_points.clear();
 
     for( int i = 0; i < contours.size(); i++ ) {
 
         rect[i] = boundingRect(contours[i]);
 
-        if (rect[i].height < 20 || rect[i].width < 10) {
+        if (rect[i].height < 10 || rect[i].width < 5) {
             continue;
         }
 
@@ -184,11 +219,11 @@ cv::Mat drawAndCalc(cv::Mat frame, cv::Mat sure_bodies) {
         Point center = Point(m.m10 / m.m00, m.m01 / m.m00);
 
         double distance = (real_height * fy) / rect[i].height;
-        double px_horz_dist = abs(frame.cols/2 - (rect[i].tl().x + rect[i].width/2));
+        double px_horz_dist = frame.cols/2 - center.x;
         double horz_dist = distance * px_horz_dist / fy;
+        double horz_dist2 = distance * tan(px_horz_dist * angle_constant);
 
-        cerr << "Box Height, Mid Dist: (" << rect[i].height << ", " << px_horz_dist << ")";
-        cerr << "      X, Y Dist: (" << distance << ", " << horz_dist << ") " << endl;
+        cone_points.push_back(pcl::PointXYZ(distance, horz_dist2, 0));
 
         Scalar color =  Scalar(0, 255);
         drawContours( frame, contours, i, color, 1, 8, vector<Vec4i>(), 0, Point() );
@@ -198,7 +233,6 @@ cv::Mat drawAndCalc(cv::Mat frame, cv::Mat sure_bodies) {
 
     return frame;
 }
-
 
 cv::Mat kernel(int x, int y) {
     return cv::getStructuringElement(cv::MORPH_RECT,cv::Size(x,y));
@@ -221,7 +255,6 @@ void cutEnvironment(cv::Mat img) {
                   cv::Scalar(0,0,0),CV_FILLED);
 }
 
-
 void publishMessage(ros::Publisher pub, Mat img, std::string img_type) {
     if (pub.getNumSubscribers() > 0) {
         sensor_msgs::Image outmsg;
@@ -231,4 +264,42 @@ void publishMessage(ros::Publisher pub, Mat img, std::string img_type) {
         pub.publish(outmsg);
     }
 }
+
+void drawCircle(pcl::PointCloud<pcl::PointXYZ> &cloud, pcl::PointXYZ point, double radius, int numPoints) {
+    const double pi = boost::math::constants::pi<double>();
+    double angleStep = (2.0 * pi) / numPoints;
+
+    double angle = 0; //start angle
+
+    for (int i = 0; i < numPoints; i++) {
+        //draw a circle
+        double x = radius * cos(angle);
+        double y = radius * sin(angle);
+
+        cloud.push_back(pcl::PointXYZ(point.x + x, point.y + y , 0)); //point.x + radius is center of circle
+        angle = angle + angleStep;
+
+    }
+}
+
+void fovCallback(const sensor_msgs::CameraInfoConstPtr& msg) {
+    double fx = msg->P[0]; //horizontal focal length of rectified image, in px
+//    fy = msg->P[5]; //vertical focal length
+    imageSize = Size(msg->width, msg->height);
+    camera_fov_horizontal = 2 * atan2(imageSize.width, 2*fx);
+    fov_callback_called = true;
+    angle_constant = camera_fov_horizontal / 2.0 /imageSize.width;
+}
+
+void loadCameraFOV(NodeHandle& nh) {
+    auto infoSub = nh.subscribe("/camera/camera_info", 1, fovCallback);
+
+    fov_callback_called = false;
+    while (!fov_callback_called) {
+        spinOnce();
+        Duration(1).sleep();
+    }
+    ROS_INFO("Using horizontal FOV %f ", camera_fov_horizontal);
+}
+
 

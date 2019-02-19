@@ -17,9 +17,7 @@ cv_bridge::CvImagePtr cv_ptr;
 ros::Publisher pub, pub1, pub2;
 
 cv::Mat kernel(int, int);
-cv::Mat fillColorLines(cv::Mat, cv::Mat);
 void cutEnvironment(cv::Mat);
-cv::Mat cutSmall(cv::Mat, int);
 void publishMessage(ros::Publisher, Mat, std::string);
 Mat overlayBinaryGreen(Mat, Mat);
 
@@ -72,6 +70,7 @@ int main(int argc, char** argv) {
 //    nhp.param("perfect_lines_min_cut", perfect_lines_min_cut, 200);
 //    nhp.param("Laplacian_threshold", Laplacian_threshold, 2);
 
+
     nhp.param("blockSky_height", blockSky_height, 220);
     nhp.param("blockWheels_height", blockWheels_height, 200);
     nhp.param("blockBumper_height", blockBumper_height, 200);
@@ -92,22 +91,6 @@ cv::Mat kernel(int x, int y) {
     return cv::getStructuringElement(cv::MORPH_RECT,cv::Size(x,y));
 }
 
-cv::Mat fillColorLines(cv::Mat lines, cv::Mat color_found) {
-    cv::Mat color_left, lines_found(lines.rows,lines.cols,CV_8UC1,cv::Scalar::all(0));
-    Mat lines_remaining = lines.clone();
-    std::vector<cv::Point> locations;
-
-    lines.copyTo(color_left, color_found);
-    cv::findNonZero(color_left, locations);
-    while(!locations.empty()) {
-        floodFill(lines_remaining, locations[0], cv::Scalar(0));
-        bitwise_xor(lines, lines_remaining, lines_found);
-        bitwise_and(lines_remaining, color_left, color_left);
-        cv::findNonZero(color_left, locations);
-    }
-    return lines_found;
-}
-
 void cutEnvironment(cv::Mat img) {
     cv::rectangle(img,
                   cv::Point(0,0),
@@ -125,19 +108,6 @@ void cutEnvironment(cv::Mat img) {
                   cv::Scalar(0,0,0),CV_FILLED);
 }
 
-cv::Mat cutSmall(cv::Mat color_edges, int size_min) {
-    cv::Mat contours_color(color_edges.rows,color_edges.cols,CV_8UC1,cv::Scalar::all(0));
-    std::vector<std::vector<cv::Point>> contours;
-    std::vector<cv::Vec4i> hierarchy;
-
-    cv::findContours(color_edges, contours, hierarchy,CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE);
-    for( int i = 0; i < contours.size(); i++ ) {
-        if (size_min < cv::arcLength(contours[i], false) ) {
-            cv::drawContours(contours_color, contours, i, cv::Scalar(255), CV_FILLED, 8, hierarchy);
-        }
-    }
-    return contours_color;
-}
 
 void publishMessage(ros::Publisher pub, Mat img, std::string img_type) {
     if (pub.getNumSubscribers() > 0) {
