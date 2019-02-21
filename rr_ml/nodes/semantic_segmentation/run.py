@@ -13,6 +13,7 @@ from . import model_utils
 
 
 last_msg = None
+disable_gpu = True
 
 
 def image_msg_callback(msg):
@@ -24,7 +25,8 @@ def main():
     global last_msg
 
     config = tf.ConfigProto()
-    config.device_count['GPU'] = 0  # disable GPU if testing system has one
+    if disable_gpu:
+        config.device_count['GPU'] = 0  # disables GPU if testing system has one
     keras.backend.set_session(tf.Session(config=config))
 
     rospy.init_node('segnet_labeler')
@@ -74,13 +76,8 @@ def main():
         n_labels, labels_img = cv2.connectedComponents(output_img, 8, cv2.CV_32S)
         for i in range(n_labels):
             component_size = np.count_nonzero(labels_img == i)
-            if component_size < 750:
+            if component_size < 500:
                 output_img[labels_img == i] = 0
-
-        # draw lines on sides to limit path planner to FOV
-        # fov_bound_ymax = int(0.75 * output_img.shape[0])
-        # output_img[fov_bound_ymax:, :15] = 255
-        # output_img[fov_bound_ymax:, -15:] = 255
 
         out_msg = cv_bridge.cv2_to_imgmsg(output_img, encoding="mono8")
         detect_pub.publish(out_msg)
