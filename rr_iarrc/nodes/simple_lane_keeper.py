@@ -1,5 +1,7 @@
 #! /usr/bin/python
 
+from __future__ import print_function
+
 import warnings
 import time
 
@@ -53,8 +55,9 @@ def get_base_position(label_img, i, x, y, w, h):
     return x_mean, y_mean
 
 
-def label_pos_dist(label_pos):
-    i, base_x, base_y = label_pos
+def label_base_distance(label_img, stats, i):
+    x, y, w, h, _ = stats[i]
+    base_x, base_y = get_base_position(label_img, i, x, y, w, h)
     return ((base_x * base_x) + (base_y * base_y)) ** 0.5
 
 
@@ -91,36 +94,28 @@ def image_callback(msg):
     labels_img_cropped = labels_img.copy()
     labels_img_cropped[:px_crop, :] = 0
 
-    # stats[:, 1] -= px_crop  # adjust y values of connected component bounding boxes after cropping
-
     valid_labels = []
-    for i in xrange(1, n_labels):
+    for i in range(1, n_labels):
         if stats[i, cv2.CC_STAT_AREA] > 100 and np.count_nonzero(labels_img_cropped == i) > 0:
             valid_labels.append(i)
 
-    left_labels_poses = []
-    right_labels_poses = []
+    left_lines_labels = []
+    right_lines_labels = []
     for i in valid_labels:
-        x, y, w, h = stats[i, 0:4]
-        base_x, base_y = get_base_position(labels_img_cropped, i, x, y, w, h)
-        if base_x > 0:
-            right_labels_poses.append((i, base_x, base_y))
-        else:
-            left_labels_poses.append((i, base_x, base_y))
+        line = fit_line(labels_img_cropped, i)
+        l = (left_lines_labels if line(0) < 0 else right_lines_labels)
+        l.append((line, i))
+
+    def line_label_dist(line_label):
+        _, i = line_label
+        return label_base_distance(labels_img_cropped, stats, i)
 
     left_line = None
     right_line = None
-    if len(left_labels_poses) > 0:
-        i, _, _ = min(left_labels_poses, key=label_pos_dist)
-        left_line = fit_line(labels_img_cropped, i)
-    if len(right_labels_poses) > 0:
-        i, _, _ = min(right_labels_poses, key=label_pos_dist)
-        right_line = fit_line(labels_img_cropped, i)
-
-    # if left_line is not None and left_line[1] > 0:
-    #     left_line = None
-    # if right_line is not None and right_line[1] < 0:
-    #     right_line = None
+    if len(left_lines_labels) > 0:
+        left_line, _ = min(left_lines_labels, key=line_label_dist)
+    if len(right_lines_labels) > 0:
+        right_line, _ = min(right_lines_labels, key=line_label_dist)
 
     if left_line is not None and right_line is not None:
         target = (left_line(pursuit_dist) + right_line(pursuit_dist)) / 2
