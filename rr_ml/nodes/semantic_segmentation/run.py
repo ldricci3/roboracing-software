@@ -76,7 +76,7 @@ def main():
         n_labels, labels_img = cv2.connectedComponents(output_img, 8, cv2.CV_32S)
         for i in range(n_labels):
             component_size = np.count_nonzero(labels_img == i)
-            if component_size < 500:
+            if component_size < 1000:
                 output_img[labels_img == i] = 0
 
         out_msg = cv_bridge.cv2_to_imgmsg(output_img, encoding="mono8")
