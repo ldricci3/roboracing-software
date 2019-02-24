@@ -79,7 +79,7 @@ void img_callback(const sensor_msgs::ImageConstPtr& msg) {
 
     pcl::PointCloud<pcl::PointXYZ> cone_cloud;
     for (int i = 0; i < cone_points.size(); i++) {
-        cerr << cone_points[i] << endl;
+//        cerr << cone_points[i] << endl;
         drawCircle(cone_cloud, cone_points[i], .1, 20);
     }
 
@@ -101,7 +101,7 @@ int main(int argc, char** argv) {
     nhp.param("orange_low_S", low_S, 140);
     nhp.param("orange_low_V", low_V, 140);
 
-    nhp.param("canny_cut_min_threshold", canny_cut_min_threshold, 35);
+    nhp.param("canny_cut_min_threshold", canny_cut_min_threshold, 40);
     nhp.param("percent_max_distance_transform", percent_max_distance_transform, 0.7);
 
     nhp.param("blockSky_height", blockSky_height, 220);
