@@ -68,4 +68,5 @@ add_subdirectory(src/hls_matcher)
 add_subdirectory(src/hsv_tuner)
 add_subdirectory(src/Canny_Detector)
 add_subdirectory(src/laplacian_line_detection)
+add_subdirectory(src/cone_detection)
 
