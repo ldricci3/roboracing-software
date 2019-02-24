@@ -1,0 +1,10 @@
+<launch>
+    <include file="$(dirname)/laplacian_line_detector.launch"/>
+    <!--<include file="$(dirname)/line_detector_segnet.launch"/>-->
+
+    <include file="$(dirname)/lines_pcl_converter.launch"/>
+
+    <include file="$(find rr_platform)/launch/sedani.launch"/>
+
+    <node pkg="rr_iarrc" type="simple_lane_keeper.py" name="simple_lane_keeper" output="screen"/>
+</launch>
