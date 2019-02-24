@@ -17,7 +17,8 @@ from rr_platform.msg import speed as Speed
 
 dist_max = 2.5
 px_per_meter = 50
-pursuit_dist = 2.0
+pursuit_dist = 2.5
+turn_max = 0.4
 
 
 class Controller(object):
@@ -127,13 +128,18 @@ def image_callback(msg):
         target = 0
 
     steer_angle = controller.update(target)
+    if steer_angle < -turn_max:
+        steer_angle = -turn_max
+    elif steer_angle > turn_max:
+        steer_angle = turn_max
 
     steer_msg = Steering()
     steer_msg.angle = steer_angle
     steer_pub.publish(steer_msg)
 
     speed_msg = Speed()
-    speed_msg.speed = 1.0 - 1.0 * abs(steer_angle)
+    # speed_msg.speed = 1.0 - 1.0 * abs(steer_angle)
+    speed_msg.speed = 1.25
     speed_pub.publish(speed_msg)
 
     # ------------------ Draw debug image ----------------
@@ -178,7 +184,7 @@ if __name__ == '__main__':
     speed_pub = rospy.Publisher("/plan/speed", Speed, queue_size=1)
     steer_pub = rospy.Publisher("/plan/steering", Steering, queue_size=1)
 
-    controller = Controller(0.1, 0, 0)
+    controller = Controller(0.4, 0, 0)
 
     warnings.simplefilter("ignore", category=np.RankWarning)
 

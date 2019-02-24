@@ -50,7 +50,7 @@ void img_callback(const sensor_msgs::ImageConstPtr& msg) {
         }
     }
     cv::rotate(bottom_edges, bottom_edges, cv::ROTATE_90_COUNTERCLOCKWISE);
-    dilate(bottom_edges, bottom_edges, kernel(2,2));
+    dilate(bottom_edges, bottom_edges, kernel(6,6));
 
     Mat green_lines = overlayBinaryGreen(frame, bottom_edges);
 

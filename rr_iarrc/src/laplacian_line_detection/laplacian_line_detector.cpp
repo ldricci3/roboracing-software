@@ -39,7 +39,7 @@ void img_callback(const sensor_msgs::ImageConstPtr& msg) {
     cv::cvtColor(frame_blur, frame_gray, cv::COLOR_BGR2GRAY);
 
     Mat thres;
-    adaptiveThreshold(frame_gray, thres, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, 5, -1);
+    adaptiveThreshold(frame_gray, thres, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, 5, 0);
     cutEnvironment(thres);
     Mat cut = cutSmall(thres, perfect_lines_min_cut);   //Make sure only Lines
 

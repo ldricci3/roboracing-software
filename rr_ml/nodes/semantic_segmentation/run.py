@@ -27,6 +27,8 @@ def main():
     config = tf.ConfigProto()
     if disable_gpu:
         config.device_count['GPU'] = 0  # disables GPU if testing system has one
+    config.inter_op_parallelism_threads = 1
+    config.intra_op_parallelism_threads = 1
     keras.backend.set_session(tf.Session(config=config))
 
     rospy.init_node('segnet_labeler')
