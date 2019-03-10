@@ -12,13 +12,14 @@
 #include <stdio.h>
 
 using namespace cv;
+using namespace std;
 
 cv_bridge::CvImagePtr cv_ptr;
 ros::Publisher pub, pub1, pub2, pub3;
 
 cv::Mat kernel(int, int);
 cv::Mat fillColorLines(cv::Mat, cv::Mat);
-void cutEnvironment(cv::Mat);
+void cutEnvironment(cv::Mat, int offset);
 cv::Mat cutSmall(cv::Mat, int);
 void publishMessage(ros::Publisher, Mat, std::string);
 Mat overlayBinaryGreen(Mat, Mat);
@@ -31,17 +32,21 @@ void img_callback(const sensor_msgs::ImageConstPtr& msg) {
     cv_ptr = cv_bridge::toCvCopy(msg, "bgr8");
     Mat frame = cv_ptr->image;
 
+    ros::Time begin = ros::Time::now();
+
     //Image Height Debugger
-    //cutEnvironment(frame);
+//    Mat frame_cut = frame.clone();
 
     cv::Mat frame_gray, frame_blur, detected_edges;
-    GaussianBlur(frame, frame_blur, Size(5,5), 0, 0, BORDER_DEFAULT);
+    GaussianBlur(frame, frame_blur, Size(9,9), 0, 0, BORDER_DEFAULT);
     cv::cvtColor(frame_blur, frame_gray, cv::COLOR_BGR2GRAY);
 
     Mat thres;
-    adaptiveThreshold(frame_gray, thres, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, 5, -1);
-    cutEnvironment(thres);
-    Mat cut = cutSmall(thres, perfect_lines_min_cut);   //Make sure only Lines
+    Mat frame_gray_cut = frame_gray.clone();
+    cutEnvironment(frame_gray_cut, 4);
+    adaptiveThreshold(frame_gray_cut, thres, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, 5, -1);
+    cutEnvironment(thres, 0);
+    erode(thres, thres, kernel(3,1));
 
     Mat lapl;
     Laplacian(frame_gray, lapl, CV_16S, 3, 1, 0, BORDER_DEFAULT);
@@ -49,14 +54,17 @@ void img_callback(const sensor_msgs::ImageConstPtr& msg) {
     convertScaleAbs(lapl, lapl);
     threshold(lapl, lapl, Laplacian_threshold, 255, 0);
 
+    Mat cut = cutSmall(thres, perfect_lines_min_cut);   //Make sure only Lines
     Mat fill = fillColorLines(lapl, cut);
     fill = cutSmall(fill, perfect_lines_min_cut);
 
     Mat green_lines = overlayBinaryGreen(frame, fill);
 
+    cerr << "Time: " << ros::Time::now() - begin << " Hz: " << 1/(ros::Time::now() - begin).toSec() << endl;
+
 //	publish images
     publishMessage(pub, fill, "mono8");
-    publishMessage(pub1, cut, "mono8");
+    publishMessage(pub1, thres, "mono8");
     publishMessage(pub2, lapl, "mono8");
     publishMessage(pub3, green_lines, "bgr8");
 }
@@ -108,20 +116,20 @@ cv::Mat fillColorLines(cv::Mat lines, cv::Mat color_found) {
     return lines_found;
 }
 
-void cutEnvironment(cv::Mat img) {
+void cutEnvironment(cv::Mat img, int offset) {
     cv::rectangle(img,
                   cv::Point(0,0),
-                  cv::Point(img.cols,img.rows / 3 + blockSky_height),
+                  cv::Point(img.cols,img.rows / 3 + blockSky_height - offset),
                   cv::Scalar(0,0,0),CV_FILLED);
 
     cv::rectangle(img,
                   cv::Point(0,img.rows),
-                  cv::Point(img.cols,2 * img.rows / 3 + blockWheels_height),
+                  cv::Point(img.cols,2 * img.rows / 3 + blockWheels_height + offset),
                   cv::Scalar(0,0,0),CV_FILLED);
 
     cv::rectangle(img,
                   cv::Point(img.cols/3,img.rows),
-                  cv::Point(2 * img.cols / 3, 2 * img.rows / 3 + blockBumper_height),
+                  cv::Point(2 * img.cols / 3, 2 * img.rows / 3 + blockBumper_height + offset),
                   cv::Scalar(0,0,0),CV_FILLED);
 }
 

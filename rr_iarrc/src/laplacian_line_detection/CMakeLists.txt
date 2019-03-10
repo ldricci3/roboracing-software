@@ -6,3 +6,7 @@ target_link_libraries(laplacian_line_detector ${catkin_LIBRARIES})
 target_link_libraries( laplacian_line_detector ${OpenCV_LIBS} )
 add_dependencies(laplacian_line_detector rr_platform_generate_messages_cpp)
 
+add_executable(laplacian_line_detector_copy laplacian_line_detector_copy.cpp)
+target_link_libraries(laplacian_line_detector_copy ${catkin_LIBRARIES})
+target_link_libraries( laplacian_line_detector_copy ${OpenCV_LIBS} )
+add_dependencies(laplacian_line_detector_copy rr_platform_generate_messages_cpp)
