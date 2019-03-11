@@ -46,7 +46,7 @@ int canny_cut_min_threshold;
 double percent_max_distance_transform;
 
 double fy = 671.46; //586.508911;
-double real_height = .2286; //cm or 9.0 inches
+double real_height = 9; //cm or 9.0 inches .2286 m
 
 double camera_fov_horizontal;  // radians
 Size imageSize;
@@ -82,7 +82,7 @@ void img_callback(const sensor_msgs::ImageConstPtr& msg) {
 
     for (int i = 0; i < cone_points.size(); i++) {
 //        cerr << cone_points[i] << endl;
-        drawCircle(cone_cloud, cone_points[i], .07, 20);
+        drawCircle(cone_cloud, cone_points[i], 5.5/2, 20);
     }
     sensor_msgs::PointCloud2 outmsg;
     pcl::toROSMsg(cone_cloud, outmsg);
@@ -236,7 +236,7 @@ cv::Mat drawAndCalc(cv::Mat frame, cv::Mat sure_bodies) {
         double horz_dist = distance * px_horz_dist / fy;
         double horz_dist2 = distance * tan(px_horz_dist * angle_constant);
 
-        cone_points.push_back(pcl::PointXYZ(distance + .2, horz_dist, 0));
+        cone_points.push_back(pcl::PointXYZ(distance, horz_dist, 0));
 
         line(frame, Point(frame.cols/2 +offset,0), Point(frame.cols/2+offset, frame.rows), (0,255,0), 2);
 //        printf("Pixels: (%d, %d) Real: (%.2f, %.2f)\n", rect[i].height, px_horz_dist, distance, horz_dist);
