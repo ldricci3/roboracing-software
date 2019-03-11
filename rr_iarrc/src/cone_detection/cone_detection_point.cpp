@@ -38,14 +38,15 @@ cv::Mat  drawAndCalc(cv::Mat, Mat);
 void drawCircle(pcl::PointCloud<pcl::PointXYZ> &cloud, pcl::PointXYZ point, double radius, int numPoints);
 void fovCallback(const sensor_msgs::CameraInfoConstPtr& msg);
 void loadCameraFOV(NodeHandle& nh);
+cv::Mat cutSmall(cv::Mat, int);
 
 int blockSky_height, blockWheels_height, blockBumper_height;
 int low_H, high_H, low_S, low_V;
 int canny_cut_min_threshold;
 double percent_max_distance_transform;
 
-double fy = 286.508911; //586.508911;
-double real_height = .45; //cm
+double fy = 671.46; //586.508911;
+double real_height = .2286; //cm or 9.0 inches
 
 double camera_fov_horizontal;  // radians
 Size imageSize;
@@ -53,7 +54,6 @@ bool fov_callback_called;
 double angle_constant;
 
 vector<pcl::PointXYZ> cone_points;
-
 
 void img_callback(const sensor_msgs::ImageConstPtr& msg) {
     cv_ptr = cv_bridge::toCvCopy(msg, "bgr8");
@@ -66,11 +66,11 @@ void img_callback(const sensor_msgs::ImageConstPtr& msg) {
     cv::cvtColor(frame_cut, hsv_frame, cv::COLOR_BGR2HSV);
     cv::inRange(hsv_frame, cv::Scalar(low_H, low_S, low_V), cv::Scalar(high_H, 255, 255), orange_found);
     cv::morphologyEx(orange_found, orange_found, cv::MORPH_OPEN, kernel(2,2));
+    orange_found = cutSmall(orange_found, 50);
 
     Mat detected_bodies = cutBodies(frame_cut, orange_found);
-
+    detected_bodies = cutSmall(detected_bodies, 50);
     Mat sure_bodies = doWatershed(frame, orange_found, detected_bodies);
-
     frame = drawAndCalc(frame, sure_bodies);
 
 //	publish Images
@@ -78,11 +78,12 @@ void img_callback(const sensor_msgs::ImageConstPtr& msg) {
     publishMessage(pub1, sure_bodies, "mono8");
 
     pcl::PointCloud<pcl::PointXYZ> cone_cloud;
+//    printf("%d", cone_points.size());
+
     for (int i = 0; i < cone_points.size(); i++) {
 //        cerr << cone_points[i] << endl;
-        drawCircle(cone_cloud, cone_points[i], .1, 20);
+        drawCircle(cone_cloud, cone_points[i], .07, 20);
     }
-
     sensor_msgs::PointCloud2 outmsg;
     pcl::toROSMsg(cone_cloud, outmsg);
     outmsg.header.frame_id = "base_footprint";
@@ -122,7 +123,18 @@ int main(int argc, char** argv) {
 }
 
 
+cv::Mat cutSmall(cv::Mat color_edges, int size_min) {
+    cv::Mat contours_color(color_edges.rows,color_edges.cols,CV_8UC1,cv::Scalar::all(0));
+    std::vector<std::vector<cv::Point>> contours;
 
+    cv::findContours(color_edges, contours,CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE);
+    for( int i = 0; i < contours.size(); i++ ) {
+        if (size_min < cv::arcLength(contours[i], false) ) {
+            cv::drawContours(contours_color, contours, i, cv::Scalar(255), CV_FILLED, 8);
+        }
+    }
+    return contours_color;
+}
 
 
 cv::Mat cutBodies(cv::Mat frame_cut, cv::Mat orange_found) {
@@ -218,17 +230,31 @@ cv::Mat drawAndCalc(cv::Mat frame, cv::Mat sure_bodies) {
         Moments m = moments(contours[i], true);
         Point center = Point(m.m10 / m.m00, m.m01 / m.m00);
 
+        int offset = 0;
         double distance = (real_height * fy) / rect[i].height;
-        double px_horz_dist = frame.cols/2 - center.x;
+        int px_horz_dist = frame.cols/2 - center.x;
         double horz_dist = distance * px_horz_dist / fy;
         double horz_dist2 = distance * tan(px_horz_dist * angle_constant);
 
-        cone_points.push_back(pcl::PointXYZ(distance, horz_dist2, 0));
+        cone_points.push_back(pcl::PointXYZ(distance + .2, horz_dist, 0));
+
+        line(frame, Point(frame.cols/2 +offset,0), Point(frame.cols/2+offset, frame.rows), (0,255,0), 2);
+//        printf("Pixels: (%d, %d) Real: (%.2f, %.2f)\n", rect[i].height, px_horz_dist, distance, horz_dist);
+        string str = "("+std::to_string(((int)(distance))) + ", " + std::to_string((int)horz_dist)+")";
+
+        stringstream stream;
+        stream << fixed << setprecision(1) << distance;
+        string s = "("+stream.str();
+
+        stringstream stream1;
+        stream1 << fixed << setprecision(1) << horz_dist;
+        s += ", " + stream1.str() +")";
 
         Scalar color =  Scalar(0, 255);
         drawContours( frame, contours, i, color, 1, 8, vector<Vec4i>(), 0, Point() );
         rectangle(frame, rect[i].tl(), rect[i].br(), color, 3, 8, 0);
         circle(frame, center, 5,  Scalar(255,0,255), CV_FILLED, 8, 0);
+        putText(frame,s, Point(center.x-80,center.y-30), FONT_HERSHEY_SIMPLEX, 1, Scalar(255, 255, 255), 2,true);
     }
 
     return frame;
