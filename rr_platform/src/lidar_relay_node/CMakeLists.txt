@@ -1,4 +1,0 @@
-add_executable(lidar_relay lidar_relay.cpp)
-target_link_libraries(lidar_relay ${catkin_LIBRARIES} rr_ethernet_tcp)
-add_dependencies(lidar_relay rr_platform_generate_messages_cpp)
-

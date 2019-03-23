@@ -1,0 +1,4 @@
+add_executable(lidar_lite_relay lidar_lite_relay.cpp)
+target_link_libraries(lidar_lite_relay ${catkin_LIBRARIES} rr_ethernet_tcp)
+add_dependencies(lidar_lite_relay rr_platform_generate_messages_cpp)
+
