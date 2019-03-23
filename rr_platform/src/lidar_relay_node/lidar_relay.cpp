@@ -2,60 +2,13 @@
 #include <boost/asio.hpp>
 #include <boost/array.hpp>
 #include <iostream>
+#include <EthernetSocket.h>
 
-/*@NOTE THIS CODE USES BOOST 1.58 as it is the version currently installed with ROS.
-  If that changes, this code will need to be updated as such!
-  So don't fear if it breaks, just fix the things by checking the links below to examples given.
+/*
+ * This is a communication relay for the Lidar Lite Board.
 */
 
 using namespace std;
-using boost::asio::ip::tcp;
-
-
-std::unique_ptr<tcp::socket> currentSocket;
-
-
-string readMessage() {
-  //read data from TCP connection
-  boost::array<char, 128> buf;
-  boost::system::error_code error;
-
-  size_t len = currentSocket->read_some(boost::asio::buffer(buf), error);
-  string reading(buf.begin(), buf.end()); //convert buffer into useable string
-
-  if (error == boost::asio::error::eof) {
-    // Connection closed cleanly by peer
-    ROS_ERROR_STREAM("TCP Connection closed by peer. Disconnecting");
-  } else if (error) {
-    ROS_ERROR_STREAM("TCP ERROR: Disconnecting");
-    throw boost::system::system_error(error); // Some other error
-  }
-
-  return reading;
-}
-
-void sendMessage(string message) {
-  boost::array<char, 128> buf;
-  boost::system::error_code error;
-
-  //write data to TCP connection
-  boost::asio::write(*currentSocket, boost::asio::buffer(message), error); //#TODO: error check????
-}
-
-/**
- * @note http://stackoverflow.com/a/27511119
- */
-std::vector <std::string> split(const std::string &s, char delim) {
-    std::stringstream ss(s);
-    std::string item;
-    std::vector <std::string> elems;
-    while (std::getline(ss, item, delim)) {
-        elems.push_back(std::move(item));
-    }
-    return elems;
-}
-
-
 
 int main(int argc, char** argv) {
     ros::init(argc, argv, "lidar_relay");
@@ -65,19 +18,11 @@ int main(int argc, char** argv) {
 
 
     //IP address and port
-    string serverName = nhp.param(string("ip_address"), string("192.168.2.2"));
-    string serviceName = nhp.param(string("tcp_port"), string("7"));
+    string ip_addr = nhp.param(string("ip_address"), string("192.168.2.2"));
+    int port = nhp.param(string("tcp_port"), 7);
 
-
-    ROS_INFO_STREAM("Trying to connect to TCP Host at " + serverName + " port: " + serviceName);
-
-    boost::asio::io_service io_service; //@NOTE: in later versions of boost, this may have a name change
-    tcp::resolver resolver(io_service);
-    tcp::resolver::query query(serverName, serviceName);
-    tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
-    currentSocket = make_unique<tcp::socket>(io_service); //used to allow us to pass socket to functions
-    boost::asio::connect(*currentSocket, endpoint_iterator);
-
+    ROS_INFO_STREAM("Trying to connect to TCP Host at " + ip_addr + " port: " + to_string(port));
+    EthernetSocket sock(ip_addr, port);
 
     //CONNECTION NOW OPEN, READY TO JAM
     ROS_INFO_STREAM("Connected to TCP Host!");
@@ -87,11 +32,11 @@ int main(int argc, char** argv) {
     while(ros::ok()) {
         ros::spinOnce();
         //read data from Arduino
-        sendMessage("$data from node;");
-        received = readMessage();
+        sock.sendMessage("$data from node;");
+        received = sock.readMessage();
         //ROS_INFO_STREAM("Received: " + received); //debug
-        //get data as array
-        std::vector <std::string> data = split(received.substr(received.find('$'), received.find(';') ), ' ');
+        //get data as array with start and end markers removed
+        std::vector <std::string> data = EthernetSocket::split(received.substr(received.find('$') + 1, received.find(';') - 1 ), ' ');
         if (!data.empty()) {
             //do something useful like:
             //write data to Arduino Board
@@ -99,7 +44,7 @@ int main(int argc, char** argv) {
             //string command = "$" + to_string(distance) + " " + to_string(distance2) + ";";
             //sendMessage(command);
             //ROS_INFO_STREAM("SENT:" + command);
-            ROS_INFO_STREAM(data[0] + data[1]);
+            ROS_INFO_STREAM(data[0] + " " + data[1]);
         }
     }
 
