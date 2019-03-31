@@ -76,7 +76,7 @@ void fovCallback(const sensor_msgs::CameraInfoConstPtr& msg) {
 }
 
 void loadCameraFOV(NodeHandle& nh) {
-    auto infoSub = nh.subscribe("/camera/camera_info", 1, fovCallback);
+    auto infoSub = nh.subscribe("/camera_center/camera_info", 1, fovCallback);
 
     Time t_start = Time::now();
     fov_callback_called = false;

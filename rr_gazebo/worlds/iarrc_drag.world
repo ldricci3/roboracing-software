@@ -15,10 +15,10 @@
 
         <include>
             <uri>model://IARRCDragTrack</uri>
-            <pose>34 0.75 0 0 0 0</pose>
+            <pose>34 1 0 0 0 0</pose>
         </include>
 
-        <population name="left_cones">
+        <!-- <population name="left_cones">
             <model name="coneL">
                 <include>
                     <uri>model://Cone</uri>
@@ -48,6 +48,6 @@
             <distribution>
                 <type>linear-x</type>
             </distribution>
-        </population>
+        </population> -->
     </world>
 </sdf>
