@@ -42,12 +42,12 @@ void loadCameraPoseFromTf() {
     tf_no_rotation.setRPY(0, 0, 0);
     tf::quaternionTFToMsg(tf_no_rotation, ps_src_cam.pose.orientation);
 
-    ps_src_cam.header.frame_id = "camera";
+    ps_src_cam.header.frame_id = "camera_center";
 
     bool success = false;
     while(!success) {
         try {
-            listener.waitForTransform("base_footprint", "camera", ros::Time(0), ros::Duration(5.0));
+            listener.waitForTransform("base_footprint", "camera_center", ros::Time(0), ros::Duration(5.0));
             listener.transformPose("base_footprint", ps_src_cam, ps_dst_base);
             success = true;
         } catch(tf2::LookupException& e) {
@@ -77,6 +77,8 @@ void fovCallback(const sensor_msgs::CameraInfoConstPtr& msg) {
 
 void loadCameraFOV(NodeHandle& nh) {
     auto infoSub = nh.subscribe("/camera_center/camera_info", 1, fovCallback);
+
+    while (Time::now().toSec() == 0);  // if we are in Gazebo, wait until proper time readings come in
 
     Time t_start = Time::now();
     fov_callback_called = false;
