@@ -358,14 +358,14 @@ def callback(data):
 		x1 = np.linspace(0, width, 400)
 		for i in x1:
 			# y1 = l[0] * i**5 + l[1] * i**4 + l[2] * i**3 + l[3] * i**2 + l[4] * i + l[5]
-			# y1 = l1[0] * i**2 + l1[1] * i**1 + l1[2]
-			y1 = l1[0] * i + l1[1]
+			y1 = l1[0] * i**2 + l1[1] * i**1 + l1[2]
+			# y1 = l1[0] * i + l1[1]
 			if y1 < height and y1 > 0:
 				l_funcx_points.append([i, y1])
 		for i in array1x:
-			# y1 = l1[0] * i**2 + l1[1] * i**1 + l1[2]
+			y1 = l1[0] * i**2 + l1[1] * i**1 + l1[2]
 			# y1 = l[0] * i**5 + l[1] * i**4 + l[2] * i**3 + l[3] * i**2 + l[4] * i + l[5]
-			y1 = l1[0] * i + l1[1]
+			# y1 = l1[0] * i + l1[1]
 			l_funcx_ypred.append(y1)
 
 
@@ -373,15 +373,15 @@ def callback(data):
 		l2 = np.polyfit(array1y, array1x, 2)  #Switched for hairpin
 		y1 = np.linspace(0, height, 400)
 		for i in y1:
-			# x1 = l2[0] * i**2 + l2[1] * i**1 + l2[2]
+			x1 = l2[0] * i**2 + l2[1] * i**1 + l2[2]
 			# x1 = l[0] * i**5 + l[1] * i**4 + l[2] * i**3 + l[3] * i**2 + l[4] * i + l[5]
-			x1 = l2[0] * i + l2[1]
+			# x1 = l2[0] * i + l2[1]
 			if x1 < width and x1 > 0:
 				l_funcy_points.append([x1, i]) #Switched for hairpin
 		for i in array1y:
-			# x1 = l2[0] * i**2 + l2[1] * i**1 + l2[2]
+			x1 = l2[0] * i**2 + l2[1] * i**1 + l2[2]
 			# x1 = l[0] * i**5 + l[1] * i**4 + l[2] * i**3 + l[3] * i**2 + l[4] * i + l[5]
-			x1 = l2[0] * i + l2[1]
+			# x1 = l2[0] * i + l2[1]
 			l_funcy_xpred.append(x1)
 
 		# print(array1y)
@@ -408,30 +408,30 @@ def callback(data):
 		r1 = np.polyfit(array2x, array2y, 2)
 		x2 = np.linspace(0, width, 400)
 		for i in x2:
-			# y2 = r1[0] * i**2 + r1[1] * i**1 + r1[2]
+			y2 = r1[0] * i**2 + r1[1] * i**1 + r1[2]
 			# y2 = r[0] * i**5 + r[1] * i**4 + r[2] * i**3 + r[3] * i**2 + r[4] * i + r[5]
-			y2 = r1[0] * i + r1[1]
+			# y2 = r1[0] * i + r1[1]
 			if y2 < height and y2 > 0:
 				r_funcx_points.append([i, y2])
 		for i in array2x:
-			# y2 = r1[0] * i**2 + r1[1] * i**1 + r1[2]
+			y2 = r1[0] * i**2 + r1[1] * i**1 + r1[2]
 			# y2 = r[0] * i**5 + r[1] * i**4 + r[2] * i**3 + r[3] * i**2 + r[4] * i + r[5]
-			y2 = r1[0] * i + r1[1]
+			# y2 = r1[0] * i + r1[1]
 			r_funcx_ypred.append(y2)
 
 		#fit x = y^2
 		r2 = np.polyfit(array2y, array2x, 2)
 		y2 = np.linspace(0, width, 400)
 		for i in y2:
-			# x2 = r2[0] * i**2 + r2[1] * i**1 + r2[2]
+			x2 = r2[0] * i**2 + r2[1] * i**1 + r2[2]
 			# x2 = r[0] * i**5 + r[1] * i**4 + r[2] * i**3 + r[3] * i**2 + r[4] * i + r[5]
-			x2 = r2[0] * i + r2[1]
+			# x2 = r2[0] * i + r2[1]
 			if x2 < width and x2 > 0:
 				r_funcy_points.append([x2, i])
 		for i in array2y:
-			# x2 = r2[0] * i**2 + r2[1] * i**1 + r2[2]
+			x2 = r2[0] * i**2 + r2[1] * i**1 + r2[2]
 			# x2 = r[0] * i**5 + r[1] * i**4 + r[2] * i**3 + r[3] * i**2 + r[4] * i + r[5]
-			x2 = r2[0] * i + r2[1]
+			# x2 = r2[0] * i + r2[1]
 			r_funcy_xpred.append(x2)
 
 		r_points = np.array(r_funcx_points, dtype=np.int32)
