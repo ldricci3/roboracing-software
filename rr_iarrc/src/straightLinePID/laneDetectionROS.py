@@ -14,7 +14,9 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 import time
 # import shapely.geometry as shp
-from std_msgs.msg import Float32
+#from std_msgs.msg import Float32
+from rr_platform.msg import steering as Steering
+from rr_platform.msg import speed as Speed
 
 
 class contourObject:
@@ -25,7 +27,7 @@ class contourObject:
 		self.extRight = extRight
 		self.midpoint = midpoint
 		self.extTop = extTop
-		self.extBottom = extBottom 
+		self.extBottom = extBottom
 
 def callback(data):
 	print("callback")
@@ -40,17 +42,18 @@ def callback(data):
 	# im = imgray;
 	speed_topic = "/speed"
 	steer_topic = "/steering"
-	steer_publisher = rospy.Publisher(steer_topic, Float32, queue_size=1)
-	speed_publisher = rospy.Publisher(speed_topic, Float32, queue_size=1)
+	steer_publisher = rospy.Publisher(steer_topic, Steering, queue_size=1)
+	speed_publisher = rospy.Publisher(speed_topic, Speed, queue_size=1)
 	t0 = time.time()
 	scale_percent = 100 # percent of original size
 	width = int(im.shape[1] * scale_percent / 100)
 	height = int(im.shape[0] * scale_percent / 100)
 	dim = (width, height)
+	print(dim)
 	# resize image
 	tempIm = im
 	im = cv2.resize(im, dim, interpolation = cv2.INTER_AREA)
-	im = im[int(height*0.30):height, 0:width]
+	# im = im[int(height*0.30):height, 0:width]
 	print("Got image")
 	# plt.imshow(im)
 	# plt.show()
@@ -64,7 +67,7 @@ def callback(data):
 	# cv2.imshow('', img_erosion)
 	# cv2.waitKey(0)
 	# ret, thresh = cv2.threshold(im, 127, 255, 0)
-	
+
 	thresh = im
 	im2, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 	# for cnt in contours:
@@ -125,22 +128,22 @@ def callback(data):
 	# 	# initialize the reverse flag and sort index
 	# 	reverse = False
 	# 	i = 0
-	 
+
 	# 	# handle if we need to sort in reverse
 	# 	if method == "right-to-left" or method == "bottom-to-top":
 	# 		reverse = True
-	 
+
 	# 	# handle if we are sorting against the y-coordinate rather than
 	# 	# the x-coordinate of the bounding box
 	# 	if method == "top-to-bottom" or method == "bottom-to-top":
 	# 		i = 1
-	 
+
 	# 	# construct the list of bounding boxes and sort them from top to
 	# 	# bottom
 	# 	boundingBoxes = [cv2.boundingRect(c) for c in cnts]
 	# 	(cnts, boundingBoxes) = zip(*sorted(zip(cnts, boundingBoxes),
 	# 		key=lambda b:b[1][i], reverse=reverse))
-	 
+
 	# 	# return the list of sorted contours and bounding boxes
 	# 	return (cnts, boundingBoxes)
 
@@ -155,7 +158,7 @@ def callback(data):
 	#         continue
 	#     valid_contours.append(contours[i])
 	# for i in range(len(valid_contours)):
-	#     smallest_x = im.shape[1]    
+	#     smallest_x = im.shape[1]
 	#     for j in range(len(contours[i])):
 	#         x = contours[i][j][0][0]
 	#         print(x)
@@ -165,7 +168,7 @@ def callback(data):
 	# inds = np.argsort(contour_min_xs)
 	# contours = list(np.array(contours)[inds])
 	alreadyPut = 0
-	threshold = 27
+	threshold = 50
 	# print(len(cntObjArr))
 	while len(cntObjArr) > 0:
 		if alreadyPut == 0:
@@ -180,8 +183,8 @@ def callback(data):
 				indexOfLargest = -1
 				for obj in cntObjArr:
 					for cntObj in array1:
-						distListArr1 = [((cntObj.midpoint[0] - obj.midpoint[0]) ** 2 + (cntObj.midpoint[1] - obj.midpoint[1]) ** 2) ** 0.5 , 
-						((cntObj.extRight[0] - obj.extLeft[0]) ** 2 + (cntObj.extRight[1] - obj.extLeft[1]) ** 2) ** 0.5, 
+						distListArr1 = [((cntObj.midpoint[0] - obj.midpoint[0]) ** 2 + (cntObj.midpoint[1] - obj.midpoint[1]) ** 2) ** 0.5 ,
+						((cntObj.extRight[0] - obj.extLeft[0]) ** 2 + (cntObj.extRight[1] - obj.extLeft[1]) ** 2) ** 0.5,
 						((cntObj.extLeft[0] - obj.extRight[0]) ** 2 + (cntObj.extLeft[1] - obj.extRight[1]) ** 2) ** 0.5,
 						((cntObj.extTop[0] - obj.extBottom[0]) ** 2 + (cntObj.extTop[1] - obj.extBottom[1]) ** 2) ** 0.5,
 						((cntObj.extBottom[0] - obj.extTop[0]) ** 2 + (cntObj.extBottom[1] - obj.extTop[1]) ** 2) ** 0.5]
@@ -191,13 +194,13 @@ def callback(data):
 						array1.append(cntObjArr.pop(index))
 						# print(index)
 						# print("Here")
-						break 
+						break
 
 					if lowestDist > highestDist:
 						farthestObj = cntObjArr[index]
 						highestDist = lowestDist
 						indexOfLargest = index
-					
+
 					index = index + 1
 				# print("Here2")
 				#print("lowestDist", lowestDist)
@@ -210,8 +213,8 @@ def callback(data):
 				lowestDist1 = float("inf")
 				obj = cntObjArr[0]
 				for cntObj in array1:
-					distListArr1 = [((cntObj.midpoint[0] - obj.midpoint[0]) ** 2 + (cntObj.midpoint[1] - obj.midpoint[1]) ** 2) ** 0.5 , 
-						((cntObj.extRight[0] - obj.extLeft[0]) ** 2 + (cntObj.extRight[1] - obj.extLeft[1]) ** 2) ** 0.5, 
+					distListArr1 = [((cntObj.midpoint[0] - obj.midpoint[0]) ** 2 + (cntObj.midpoint[1] - obj.midpoint[1]) ** 2) ** 0.5 ,
+						((cntObj.extRight[0] - obj.extLeft[0]) ** 2 + (cntObj.extRight[1] - obj.extLeft[1]) ** 2) ** 0.5,
 						((cntObj.extLeft[0] - obj.extRight[0]) ** 2 + (cntObj.extLeft[1] - obj.extRight[1]) ** 2) ** 0.5,
 						((cntObj.extTop[0] - obj.extBottom[0]) ** 2 + (cntObj.extTop[1] - obj.extBottom[1]) ** 2) ** 0.5,
 						((cntObj.extBottom[0] - obj.extTop[0]) ** 2 + (cntObj.extBottom[1] - obj.extTop[1]) ** 2) ** 0.5]
@@ -219,17 +222,17 @@ def callback(data):
 
 				lowestDist2 = float("inf")
 				for cntObj in array2:
-					distListArr2 = [((cntObj.midpoint[0] - obj.midpoint[0]) ** 2 + (cntObj.midpoint[1] - obj.midpoint[1]) ** 2) ** 0.5 , 
-						((cntObj.extRight[0] - obj.extLeft[0]) ** 2 + (cntObj.extRight[1] - obj.extLeft[1]) ** 2) ** 0.5, 
+					distListArr2 = [((cntObj.midpoint[0] - obj.midpoint[0]) ** 2 + (cntObj.midpoint[1] - obj.midpoint[1]) ** 2) ** 0.5 ,
+						((cntObj.extRight[0] - obj.extLeft[0]) ** 2 + (cntObj.extRight[1] - obj.extLeft[1]) ** 2) ** 0.5,
 						((cntObj.extLeft[0] - obj.extRight[0]) ** 2 + (cntObj.extLeft[1] - obj.extRight[1]) ** 2) ** 0.5,
 						((cntObj.extTop[0] - obj.extBottom[0]) ** 2 + (cntObj.extTop[1] - obj.extBottom[1]) ** 2) ** 0.5,
 						((cntObj.extBottom[0] - obj.extTop[0]) ** 2 + (cntObj.extBottom[1] - obj.extTop[1]) ** 2) ** 0.5]
 					lowestDist2 = min([lowestDist2, min(distListArr2)])
-				
+
 				if lowestDist1 > lowestDist2:
 					array2.append(cntObjArr.pop(0))
 				else:
-					array1.append(cntObjArr.pop(0))		 
+					array1.append(cntObjArr.pop(0))
 
 		alreadyPut = alreadyPut + 1
 
@@ -351,18 +354,18 @@ def callback(data):
 	if len(array1x) > 0:
 
 		#fit y = x^2
-		l1 = np.polyfit(array1x, array1y, 2)  
+		l1 = np.polyfit(array1x, array1y, 2)
 		x1 = np.linspace(0, width, 400)
 		for i in x1:
-			# y1 = l[0] * i**5 + l[1] * i**4 + l[2] * i**3 + l[3] * i**2 + l[4] * i + l[5] 
-			y1 = l1[0] * i**2 + l1[1] * i**1 + l1[2]
-			# y1 = l[0] * i + l[1]
-			if y1 < height and y1 > 0:
-				l_funcx_points.append([i, y1]) 
-		for i in array1x:
-			y1 = l1[0] * i**2 + l1[1] * i**1 + l1[2]
 			# y1 = l[0] * i**5 + l[1] * i**4 + l[2] * i**3 + l[3] * i**2 + l[4] * i + l[5]
-			# y1 = l[0] * i + l[1]
+			# y1 = l1[0] * i**2 + l1[1] * i**1 + l1[2]
+			y1 = l1[0] * i + l1[1]
+			if y1 < height and y1 > 0:
+				l_funcx_points.append([i, y1])
+		for i in array1x:
+			# y1 = l1[0] * i**2 + l1[1] * i**1 + l1[2]
+			# y1 = l[0] * i**5 + l[1] * i**4 + l[2] * i**3 + l[3] * i**2 + l[4] * i + l[5]
+			y1 = l1[0] * i + l1[1]
 			l_funcx_ypred.append(y1)
 
 
@@ -370,23 +373,23 @@ def callback(data):
 		l2 = np.polyfit(array1y, array1x, 2)  #Switched for hairpin
 		y1 = np.linspace(0, height, 400)
 		for i in y1:
-			x1 = l2[0] * i**2 + l2[1] * i**1 + l2[2]
+			# x1 = l2[0] * i**2 + l2[1] * i**1 + l2[2]
 			# x1 = l[0] * i**5 + l[1] * i**4 + l[2] * i**3 + l[3] * i**2 + l[4] * i + l[5]
-			# x1 = l[0] * i + l[1]
+			x1 = l2[0] * i + l2[1]
 			if x1 < width and x1 > 0:
 				l_funcy_points.append([x1, i]) #Switched for hairpin
 		for i in array1y:
-			x1 = l2[0] * i**2 + l2[1] * i**1 + l2[2]
+			# x1 = l2[0] * i**2 + l2[1] * i**1 + l2[2]
 			# x1 = l[0] * i**5 + l[1] * i**4 + l[2] * i**3 + l[3] * i**2 + l[4] * i + l[5]
-			# x1 = l[0] * i + l[1]
+			x1 = l2[0] * i + l2[1]
 			l_funcy_xpred.append(x1)
 
 		# print(array1y)
 		# print(l_funcx_ypred)
 		# print(mean_squared_error(array1y, l_funcx_ypred))
 		# print(mean_squared_error(array1x, l_funcy_xpred))
-		# l_points = np.array(l_funcx_points, dtype=np.int32)
-		# cv2.polylines(im, [l_points], 0, (255,0,0))
+		l_points = np.array(l_funcx_points, dtype=np.int32)
+		cv2.polylines(im, [l_points], 0, (255,0,0))
 		# l_points = np.array(l_funcy_points, dtype=np.int32)
 		# cv2.polylines(im, [l_points], 0, (0,255,255))
 
@@ -405,34 +408,34 @@ def callback(data):
 		r1 = np.polyfit(array2x, array2y, 2)
 		x2 = np.linspace(0, width, 400)
 		for i in x2:
-			y2 = r1[0] * i**2 + r1[1] * i**1 + r1[2]
+			# y2 = r1[0] * i**2 + r1[1] * i**1 + r1[2]
 			# y2 = r[0] * i**5 + r[1] * i**4 + r[2] * i**3 + r[3] * i**2 + r[4] * i + r[5]
-			# y2 = r[0] * i + r[1]
+			y2 = r1[0] * i + r1[1]
 			if y2 < height and y2 > 0:
 				r_funcx_points.append([i, y2])
 		for i in array2x:
-			y2 = r1[0] * i**2 + r1[1] * i**1 + r1[2]
+			# y2 = r1[0] * i**2 + r1[1] * i**1 + r1[2]
 			# y2 = r[0] * i**5 + r[1] * i**4 + r[2] * i**3 + r[3] * i**2 + r[4] * i + r[5]
-			# y2 = r[0] * i + r[1]
+			y2 = r1[0] * i + r1[1]
 			r_funcx_ypred.append(y2)
 
 		#fit x = y^2
 		r2 = np.polyfit(array2y, array2x, 2)
 		y2 = np.linspace(0, width, 400)
 		for i in y2:
-			x2 = r2[0] * i**2 + r2[1] * i**1 + r2[2]
+			# x2 = r2[0] * i**2 + r2[1] * i**1 + r2[2]
 			# x2 = r[0] * i**5 + r[1] * i**4 + r[2] * i**3 + r[3] * i**2 + r[4] * i + r[5]
-			# x2 = r[0] * i + r[1]
+			x2 = r2[0] * i + r2[1]
 			if x2 < width and x2 > 0:
 				r_funcy_points.append([x2, i])
 		for i in array2y:
-			x2 = r2[0] * i**2 + r2[1] * i**1 + r2[2]
+			# x2 = r2[0] * i**2 + r2[1] * i**1 + r2[2]
 			# x2 = r[0] * i**5 + r[1] * i**4 + r[2] * i**3 + r[3] * i**2 + r[4] * i + r[5]
-			# x2 = r[0] * i + r[1]
+			x2 = r2[0] * i + r2[1]
 			r_funcy_xpred.append(x2)
 
-		# r_points = np.array(r_funcx_points, dtype=np.int32)
-		# cv2.polylines(im, [r_points], 0, (0,0,255))
+		r_points = np.array(r_funcx_points, dtype=np.int32)
+		cv2.polylines(im, [r_points], 0, (0,0,255))
 		# r_points = np.array(r_funcy_points, dtype=np.int32)
 		# cv2.polylines(im, [r_points], 0, (0,0,255))
 
@@ -473,10 +476,10 @@ def callback(data):
 	KD = 0.05
 	if min(len(l_points), len(r_points)) == 0:
 		if len(l_points) > 0:
-			midx = [np.mean([l_points[i][0], l_points[i][0] - 70]) for i in range(max(len(l_points), len(r_points)))]
+			midx = [np.mean([l_points[i][0], l_points[i][0] - 150]) for i in range(max(len(l_points), len(r_points)))]
 			midy = [np.mean([l_points[i][1], l_points[i][1]]) for i in range(max(len(l_points), len(r_points)))]
 		else :
-			midx = [np.mean([r_points[i][0], r_points[i][0] - 70]) for i in range(max(len(l_points), len(r_points)))]
+			midx = [np.mean([r_points[i][0], r_points[i][0] + 150]) for i in range(max(len(l_points), len(r_points)))]
 			midy = [np.mean([r_points[i][1], r_points[i][1]]) for i in range(max(len(l_points), len(r_points)))]
 		# tupleList = zip(midx, midy)
 		# print(tupleList)
@@ -499,15 +502,15 @@ def callback(data):
 					midx.append(width/2 - w/2 + x)
 					midy.append(np.size(im, 0) - w + y)
 		#fit y = x^2
-		m1 = np.polyfit(midx, midy, 1)  
+		m1 = np.polyfit(midx, midy, 1)
 		x1 = np.linspace(0, width, 400)
 		# print("M1 initialy = ", m1)
 		for i in x1:
-			# y1 = l[0] * i**5 + l[1] * i**4 + l[2] * i**3 + l[3] * i**2 + l[4] * i + l[5] 
+			# y1 = l[0] * i**5 + l[1] * i**4 + l[2] * i**3 + l[3] * i**2 + l[4] * i + l[5]
 			y1 = m1[0] * i**1 + m1[1]
 			# y1 = l[0] * i + l[1]
 			if y1 < height and y1 > 0:
-				m_funcx_points.append([i, y1]) 
+				m_funcx_points.append([i, y1])
 		for i in midx:
 			y1 = m1[0] * i**1 + m1[1]
 			# y1 = l[0] * i**5 + l[1] * i**4 + l[2] * i**3 + l[3] * i**2 + l[4] * i + l[5]
@@ -566,11 +569,11 @@ def callback(data):
 			# finalMid = []
 			# x1 = np.linspace(0, width, 400)
 			# for i in x1:
-			# 	# y1 = l[0] * i**5 + l[1] * i**4 + l[2] * i**3 + l[3] * i**2 + l[4] * i + l[5] 
+			# 	# y1 = l[0] * i**5 + l[1] * i**4 + l[2] * i**3 + l[3] * i**2 + l[4] * i + l[5]
 			# 	# y1 = m1[0] * i**2 + m1[1] * i**1 + m1[2]
 			# 	y1 = m1[0] * i + m1[1]
 			# 	if y1 < height and y1 > 0:
-			# 		finalMid.append([i, y1]) 
+			# 		finalMid.append([i, y1])
 			# finalMid = np.array(finalMid, dtype=np.int32)
 			leastX = (m1[0]*cary+carx-m1[0]*m1[1])/(1+m1[0]**2)
 			leastY = m1[0] * leastX**1 + m1[1]
@@ -600,7 +603,7 @@ def callback(data):
 			# finalMid = []
 			# y1 = np.linspace(0, height, 400)
 			# for i in y1:
-			# 	# y1 = l[0] * i**5 + l[1] * i**4 + l[2] * i**3 + l[3] * i**2 + l[4] * i + l[5] 
+			# 	# y1 = l[0] * i**5 + l[1] * i**4 + l[2] * i**3 + l[3] * i**2 + l[4] * i + l[5]
 			# 	# x1 = m1[0] * i**2 + m1[1] * i**1 + m1[2]
 			# 	y1 = m2[0] * i + m2[1]
 			# 	if x1 < width and x1 > 0:
@@ -614,16 +617,33 @@ def callback(data):
 				leastDist = leastDist*-1
 		curvatureChange = -1*KP*(leastDist + KD*math.sin(angleDifference))
 		print("Rate of Change of curvature = ", curvatureChange)
-		steeringAngle = -1*(curvatureChange * 3.14159)/180
+		steeringAngle = (curvatureChange * 3.14159)/180
 		print("Steering Angle = ", steeringAngle)
 		speed = 1
-		steer_publisher.publish(steeringAngle)
-		speed_publisher.publish(2)
+
+
+		steer_msg = Steering()
+		steer_msg.angle = steeringAngle
+		steer_publisher.publish(steer_msg)
+
+		speed_msg = Speed()
+		speed_msg.speed = 2
+		speed_publisher.publish(speed_msg)
+
 	else:
 		print("No Line Detected. Going Straight")
 		print("Steering Angle = 0")
-		steer_publisher.publish(0)
-		speed_publisher.publish(2)
+
+
+		steer_msg = Steering()
+		steer_msg.angle = 0
+		steer_publisher.publish(steer_msg)
+
+
+		speed_msg = Speed()
+		speed_msg.speed = 2
+		speed_publisher.publish(speed_msg)
+
 	t1 = time.time()
 	print("time", t1 - t0)
 	print("-----------------------------------------------")
