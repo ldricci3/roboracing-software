@@ -13,7 +13,7 @@ cv::Mat kernel(int, int);
 cv::Mat fillColorLines(const cv::Mat&, const cv::Mat&);
 void blockEnvironment(const cv::Mat&);
 cv::Mat cutSmall(const cv::Mat&, int);
-void publishMessage(const ros::Publisher, const cv::Mat&, std::string);
+void publishMessage(const ros::Publisher&, const cv::Mat&, std::string, ros::Time);
 cv::Mat overlayBinaryGreen(cv::Mat&, const cv::Mat&);
 cv::Mat removeAngels(const cv::Mat& img, int distanceFromEarth);
 
@@ -31,7 +31,8 @@ int decreasedSize = 400;
  * @param msg image input from camera
  */
 void img_callback(const sensor_msgs::ImageConstPtr& msg) {
-    //Convert msg to Mat image
+    auto time_stamp = msg->header.stamp;
+
     cv_ptr = cv_bridge::toCvCopy(msg, "bgr8");
     cv::Mat frame = cv_ptr->image;
 
@@ -71,11 +72,11 @@ void img_callback(const sensor_msgs::ImageConstPtr& msg) {
     cv::Mat green_lines = overlayBinaryGreen(frame, fill);
     cv::resize(fill, fill, cv::Size(originalWidth, originalHeight));
 
-    //Publish Messages
-    publishMessage(pub_line_detector, fill, "mono8");
-    publishMessage(pub_debug_adaptive, thres, "mono8");
-    publishMessage(pub_debug_laplacian, lapl, "mono8");
-    publishMessage(pub_debug_overlay, green_lines, "bgr8");
+    //	publish images
+    publishMessage(pub_line_detector, fill, "mono8", time_stamp);
+    publishMessage(pub_debug_adaptive, cut, "mono8", time_stamp);
+    publishMessage(pub_debug_laplacian, lapl, "mono8", time_stamp);
+    publishMessage(pub_debug_overlay, green_lines, "bgr8", time_stamp);
 }
 
 int main(int argc, char** argv) {
@@ -153,12 +154,13 @@ cv::Mat cutSmall(const cv::Mat& color_edges, int size_min) {
     return contours_color;
 }
 
-void publishMessage(const ros::Publisher pub, const cv::Mat& img, std::string img_type) {
+void publishMessage(const ros::Publisher& pub, const cv::Mat& img, std::string img_type, ros::Time time_stamp) {
     if (pub.getNumSubscribers() > 0) {
         sensor_msgs::Image outmsg;
         cv_ptr->image = img;
         cv_ptr->encoding = img_type;
         cv_ptr->toImageMsg(outmsg);
+        outmsg.header.stamp = time_stamp;
         pub.publish(outmsg);
     }
 }
