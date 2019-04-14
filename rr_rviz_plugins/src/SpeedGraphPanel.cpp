@@ -13,7 +13,7 @@ SpeedGraphPanel::SpeedGraphPanel(QWidget *parent)
   : rviz::Panel(parent) // Base class constructor
 {
     currentAverage = 0;
-    nSamples = 20;
+    nSamples = 5;
     offsetX = 3;
     offsetY = 0.5;
     axisXMin = 0;
@@ -92,7 +92,7 @@ void SpeedGraphPanel::chassisCallback(const rr_platform::chassis_stateConstPtr &
         axisYMax = msg->speed_mps;
         chart->axisY()->setRange(0, axisYMax + offsetY); //auto range speed
     }
-    axisXMax = msg->header.seq;//msg->header.stamp.nsec; //#TODO: SET TO TIME STAMP!
+    axisXMax = msg->header.stamp.nsec;
     actualSpeedSeries->append(axisXMax, msg->speed_mps); //graph speed (meters/sec) vs time (nsec)
     averageSeries->append(axisXMax, currentAverage);
     averageSpeedLabel->setText(("Avg: " + std::to_string(currentAverage) + " m/s").c_str());
@@ -141,21 +141,10 @@ void SpeedGraphPanel::autoscrollCallback() {
 void SpeedGraphPanel::nSamplesSpinnerCallback(int value) {
     if (value < nSamples) {
         //#TODO: a way to remove one sample and still get average. Shouldn't be hard but I tired
-        for (int i = nSamples; i > value; i--) {
-            averageQueue.pop();
-        }
-        double sum = 0;
-        for (int j = 0; j < nSamples; j--) {
-            sum += averageQueue.front();
-            averageQueue.pop();
-        }
-        currentAverage = sum / nSamples;
-        for (int b = 0; b < nSamples; b++) {
-            averageQueue.push(currentAverage);
-        }
+    } else {
+        nSamples = value;
+        nSamplesSpinner->setMinimum(nSamples);
     }
-
-    nSamples = value;
 }
 
 } //rr_rviz_plugins
