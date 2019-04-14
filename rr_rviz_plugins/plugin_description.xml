@@ -13,4 +13,11 @@
             Panel used for reseting the state to race start
         </description>
     </class>
+    <class name="rr_rviz_plugins/SpeedGraphPanel"
+           type="rr_rviz_plugins::SpeedGraphPanel"
+           base_class_type="rviz::Panel">
+        <description>
+            Panel used for visualizing speed over time especially for PID tuning.
+        </description>
+    </class>
 </library>

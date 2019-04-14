@@ -9,7 +9,7 @@ find_package(catkin REQUIRED COMPONENTS
   rr_platform
 )
 
-find_package(Qt5Widgets REQUIRED)
+find_package(Qt5 REQUIRED COMPONENTS Widgets Charts)
 
 ###################################
 ## catkin specific configuration ##
@@ -33,17 +33,19 @@ include_directories(
 set (rviz_plugins_SRCS
     src/ExamplePanel.cpp
     src/ResetPanel.cpp
+    src/SpeedGraphPanel.cpp
 )
 
 set (rviz_plugins_HDRS
     include/rr_rviz_plugins/ExamplePanel.h
     include/rr_rviz_plugins/ResetPanel.h
+    include/rr_rviz_plugins/SpeedGraphPanel.h
 )
 
 qt5_wrap_cpp(rviz_plugins_MOCS ${rviz_plugins_HDRS})
 
 add_library(${PROJECT_NAME} ${rviz_plugins_SRCS} ${rviz_plugins_MOCS})
-target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} Qt5::Widgets)
+target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} Qt5::Widgets Qt5::Charts)
 add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 #############
