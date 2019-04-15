@@ -107,6 +107,7 @@ int main(int argc, char **argv) {
         ros::spinOnce();
 
         auto line_in = serial_port.ReadLine();
+
         if(!line_in.empty()) {
 
             if(set_imu(line_in, imu_msg)) {

@@ -134,7 +134,7 @@ def callback(data):
     rightCnt, leftCnt = [], []
     lowestLeftPnt, lowestRightPnt = 0, 0
     im2, contours, hierarchy = cv2.findContours(img, 1, 2)
-    minArea = 1000
+    minArea = 100
     for cnt in contours:
         bottommost = tuple(cnt[cnt[:, :, 1].argmax()][0])
         if bottommost[0] > size / 2 and bottommost[1] > lowestRightPnt and cv2.contourArea(cnt) > minArea:
@@ -207,7 +207,7 @@ def callback(data):
     steer_publisher.publish(steer_msg)
 
     speed_msg = Speed()
-    speed_msg.speed = 2
+    speed_msg.speed = 0.4
     speed_publisher.publish(speed_msg)
 
 
