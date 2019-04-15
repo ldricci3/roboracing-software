@@ -24,12 +24,15 @@ public:
     SpeedGraphPanel(QWidget *parent = 0);
 
 protected:
+    uint32_t zeroTime;
     int nSamples;
     QSpinBox *nSamplesSpinner;
     double offsetX;
     double offsetY;
     uint32_t axisXMin;
     uint32_t axisXMax;
+    //double axisXMin;
+    //double axisXMax;
     double axisYMax;
     std::queue<double> averageQueue;
     double currentAverage;

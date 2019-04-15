@@ -18,6 +18,7 @@ SpeedGraphPanel::SpeedGraphPanel(QWidget *parent)
     offsetY = 0.5;
     axisXMin = 0;
     axisYMax = 0.0;
+    zeroTime = 0.0;
 
     nSamplesSpinner = new QSpinBox();
     nSamplesSpinner->setPrefix("# samples: ");
@@ -77,6 +78,11 @@ SpeedGraphPanel::SpeedGraphPanel(QWidget *parent)
 }
 
 void SpeedGraphPanel::chassisCallback(const rr_platform::chassis_stateConstPtr &msg, QLineSeries *actualSpeedSeries) {
+    if (zeroTime == 0) {
+        zeroTime = msg->header.stamp.sec;
+        ROS_INFO_STREAM("zero time changed");
+    }
+
     if (averageQueue.size() < nSamples) {
         averageQueue.push(msg->speed_mps);
         currentAverage = currentAverage + (msg->speed_mps - currentAverage) / averageQueue.size(); //calc incremental mean
@@ -92,7 +98,7 @@ void SpeedGraphPanel::chassisCallback(const rr_platform::chassis_stateConstPtr &
         axisYMax = msg->speed_mps;
         chart->axisY()->setRange(0, axisYMax + offsetY); //auto range speed
     }
-    axisXMax = msg->header.stamp.nsec;
+    axisXMax = (msg->header.stamp.sec - zeroTime) * 100 + msg->header.stamp.nsec / 1000000;
     actualSpeedSeries->append(axisXMax, msg->speed_mps); //graph speed (meters/sec) vs time (nsec)
     averageSeries->append(axisXMax, currentAverage);
     averageSpeedLabel->setText(("Avg: " + std::to_string(currentAverage) + " m/s").c_str());
@@ -101,7 +107,7 @@ void SpeedGraphPanel::chassisCallback(const rr_platform::chassis_stateConstPtr &
 }
 
 void SpeedGraphPanel::speedCallback(const rr_platform::speed::ConstPtr &msg) {
-    goalSpeedSeries->append(msg->header.stamp.nsec, msg->speed);
+    goalSpeedSeries->append((msg->header.stamp.sec - zeroTime) * 100 + msg->header.stamp.nsec / 1000000, msg->speed);
 }
 
 void SpeedGraphPanel::actualSpeedSeriesCheckboxCallback(bool checked) {
@@ -134,7 +140,7 @@ void SpeedGraphPanel::autoscrollCallback() {
     if (autoscrollCheckbox->isChecked()) {
         axisXMin = axisXMax - nSamples;
     } else {
-        axisXMin = 0.0;
+        axisXMin = zeroTime;
     }
 }
 
